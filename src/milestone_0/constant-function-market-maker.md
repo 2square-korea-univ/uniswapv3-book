@@ -1,113 +1,117 @@
-# Constant Function Market Makers
+## 상수 함수 마켓 메이커 (Constant Function Market Makers)
 
-> This chapter retells [the whitepaper of Uniswap V2](https://uniswap.org/whitepaper.pdf). Understanding this math is crucial to build a Uniswap-like DEX, but it's totally fine if you don't understand everything at this stage.
+> 이 장에서는 [Uniswap V2 백서](https://uniswap.org/whitepaper.pdf)의 내용을 다시 설명합니다. 이 수학적 내용을 이해하는 것은 Uniswap과 유사한 탈중앙화 거래소(DEX)를 구축하는 데 매우 중요하지만, 현 단계에서 모든 것을 완벽하게 이해하지 못해도 괜찮습니다.
 
-As I mentioned in the previous section, there are different approaches to building AMM. We'll be focusing on and building one specific type of AMM–Constant Function Market Maker. Don't be scared by the long name! At its core is a very simple mathematical formula:
+앞선 섹션에서 언급했듯이, 자동화된 마켓 메이커(AMM)를 구축하는 데에는 다양한 접근 방식이 있습니다. 여기서는 특정 유형의 AMM인 상수 함수 마켓 메이커에 집중하여 구축하는 과정을 살펴보겠습니다. 긴 이름에 겁먹지 마세요! 핵심은 매우 간단한 수학 공식에 있습니다:
 
 $$x * y = k$$
 
-That's it, this is the AMM.
+이것이 바로 AMM의 전부입니다.
 
-$x$ and $y$ are pool contract reserves–the amounts of tokens it currently holds. *k* is just their product, actual value doesn't matter.
+$x$와 $y$는 풀 컨트랙트 준비금, 즉 현재 보유하고 있는 토큰의 양입니다. $k$는 단순히 이들의 곱이며, 실제 값은 중요하지 않습니다.
 
-> **Why are there only two reserves, *x* and *y*?**  
-Each Uniswap pool can hold only two tokens. We use *x* and *y* to refer to reserves of one pool, where *x* is the reserve of the first token and *y* is the reserve of the other token, and the order doesn't matter.
+> **왜 준비금이 $x$와 $y$ 두 개뿐인가요?**
+> 각 Uniswap 풀은 두 종류의 토큰만 보유할 수 있습니다. $x$와 $y$는 하나의 풀의 준비금을 나타내기 위해 사용되며, $x$는 첫 번째 토큰의 준비금, $y$는 다른 토큰의 준비금을 의미하며, 순서는 중요하지 않습니다.
 
-The constant function formula says: **after each trade, *k* must remain unchanged**. When traders make trades, they put some amount of one token into a pool (the token they want to sell) and remove some amount of the other token from the pool (the token they want to buy). This changes the reserves of the pool, and the constant function formula says that **the product** of reserves must not change. As we will see many times in this book, this simple requirement is the core algorithm of how Uniswap works.
+상수 함수 공식은 **각 거래 후에도 $k$는 변하지 않아야 한다**고 말합니다. 트레이더가 거래를 할 때, 그들은 일정량의 한 토큰을 풀에 넣고 (판매하려는 토큰) 다른 토큰의 일정량을 풀에서 꺼냅니다 (구매하려는 토큰). 이는 풀의 준비금을 변경시키며, 상수 함수 공식은 준비금의 **곱**은 변하지 않아야 한다고 명시합니다. 이 책에서 여러 번 보게 되겠지만, 이 간단한 요구 사항이 Uniswap 작동 방식의 핵심 알고리즘입니다.
 
-## The Trade Function
-Now that we know what pools are, let's write the formula of how trading happens in a pool:
+## 거래 함수 (The Trade Function)
+이제 풀이 무엇인지 알았으니, 풀에서 거래가 어떻게 이루어지는지 공식을 작성해 보겠습니다:
 
 $$(x + r\Delta x)(y - \Delta y) = k$$
 
-1. There's a pool with some amount of token 0 ($x$) and some amount of token 1 ($y$) 
-1. When we buy token 1 for token 0, we give some amount of token 0 to the pool ($\Delta x$).
-1. The pool gives us some amount of token 1 in exchange ($\Delta y$).
-1. The pool also takes a small fee ($r = 1 - \text{swap fee}$) from the amount of token 0 we gave.
-1. The reserve of token 0 changes ($x + r \Delta x$), and the reserve of token 1 changes as well ($y - \Delta y$).
-1. The product of updated reserves must still equal $k$.
+1. 토큰 0 ($x$)의 일정량과 토큰 1 ($y$)의 일정량을 가진 풀이 있습니다.
+2. 토큰 0으로 토큰 1을 구매할 때, 우리는 일정량의 토큰 0을 풀에 제공합니다 ($\Delta x$).
+3. 풀은 그 대가로 일정량의 토큰 1을 우리에게 제공합니다 ($\Delta y$).
+4. 풀은 또한 우리가 제공한 토큰 0의 양에서 작은 수수료 ($r = 1 - \text{스왑 수수료}$)를 취합니다.
+5. 토큰 0의 준비금은 ($x + r \Delta x$)로 변경되고, 토큰 1의 준비금도 ($y - \Delta y$)로 변경됩니다.
+6. 업데이트된 준비금의 곱은 여전히 $k$와 같아야 합니다.
 
-> We'll use token 0 and token 1 notation for the tokens because this is how they're referenced in the code. At this point, it doesn't matter which of them is 0 and which is 1.
+> 코드에서 토큰을 참조하는 방식 때문에 토큰 0과 토큰 1 표기법을 사용합니다. 이 시점에서 어느 것이 0이고 어느 것이 1인지는 중요하지 않습니다.
 
-We're basically giving a pool some amount of token 0 and getting some amount of token 1. The job of the pool is to give us a correct amount of token 1 calculated at a fair price. This leads us to the following conclusion: **pools decide what trade prices are**.
+기본적으로 우리는 풀에 일정량의 토큰 0을 제공하고 일정량의 토큰 1을 얻습니다. 풀의 역할은 공정한 가격으로 계산된 정확한 양의 토큰 1을 우리에게 제공하는 것입니다. 이는 다음과 같은 결론으로 이어집니다. **풀이 거래 가격을 결정합니다.**
 
-## Pricing
+## 가격 결정 (Pricing)
 
-How do we calculate the prices of tokens in a pool?
+풀에서 토큰의 가격은 어떻게 계산할까요?
 
-Since Uniswap pools are separate smart contracts, **tokens in a pool are priced in terms of each other**. For example: in a ETH/USDC pool, ETH is priced in terms of USDC, and USDC is priced in terms of ETH. If 1 ETH costs 1000 USDC, then 1 USDC costs 0.001 ETH. The same is true for any other pool, whether it's a stablecoin pair or not (e.g. ETH/BTC).
+Uniswap 풀은 독립적인 스마트 컨트랙트이기 때문에, **풀 내의 토큰 가격은 서로를 기준으로 책정됩니다**. 예를 들어: ETH/USDC 풀에서 ETH 가격은 USDC 기준으로, USDC 가격은 ETH 기준으로 책정됩니다. 만약 1 ETH가 1000 USDC라면, 1 USDC는 0.001 ETH입니다. 이는 스테이블 코인 쌍이든 아니든 (예: ETH/BTC) 다른 모든 풀에도 동일하게 적용됩니다.
 
-In the real world, everything is priced based on [the law of supply and demand](https://www.investopedia.com/terms/l/law-of-supply-demand.asp).  This also holds true for AMMs. We'll put the demand part aside for now and focus on supply.
+실제 세계에서는 모든 것이 [수요와 공급의 법칙](https://www.investopedia.com/terms/l/law-of-supply-demand.asp)에 따라 가격이 결정됩니다. 이는 AMM에도 마찬가지로 적용됩니다. 수요 부분은 잠시 제쳐두고 공급에 집중해 보겠습니다.
 
-The prices of tokens in a pool are determined by the supply of the tokens, that is by **the amounts of reserves of the tokens** that the pool is holding. Token prices are simply relations of reserves:
+풀에서 토큰의 가격은 토큰의 공급량, 즉 **풀이 보유하고 있는 토큰 준비금의 양**에 의해 결정됩니다. 토큰 가격은 단순히 준비금의 비율입니다:
 
 $$P_x = \frac{y}{x}, \quad P_y=\frac{x}{y}$$
 
-Where $P_x$ and $P_y$ are prices of tokens in terms of the other token.
+여기서 $P_x$와 $P_y$는 다른 토큰으로 표시되는 토큰의 가격입니다.
 
-Such prices are called *spot prices* and they only reflect current market prices. However, the actual price of a trade is calculated differently. And this is where we need to bring the demand part back.
+이러한 가격을 *현물 가격*이라고 하며, 현재 시장 가격만 반영합니다. 그러나 실제 거래 가격은 다르게 계산됩니다. 그리고 여기서 수요 부분을 다시 가져와야 합니다.
 
-Concluding from the law of supply and demand, **high demand increases the price**–and this is a property we need to have in a permissionless system. We want the price to be high when demand is high, and we can use pool reserves to measure the demand: the more tokens you want to remove from a pool (relative to the pool's reserves), the higher the impact of demand is.
+수요와 공급의 법칙에서 결론을 내리면, **높은 수요는 가격을 상승시킵니다.** 이는 허가 없는 시스템에서 반드시 가져야 할 속성입니다. 우리는 수요가 높을 때 가격이 높고, 풀 준비금을 사용하여 수요를 측정할 수 있기를 원합니다. 풀에서 제거하려는 토큰이 많을수록 (풀의 준비금에 상대적으로), 수요의 영향이 더 커집니다.
 
-Let's return to the trade formula and look at it closer:
+거래 공식으로 돌아가서 자세히 살펴보겠습니다:
 
 $$(x + r\Delta x)(y - \Delta y) = xy$$
 
-As you can see, we can derive $\Delta_x$ and $\Delta y$ from it, which means we can calculate the output amount of a trade based on the input amount and vice versa:
+보시다시피, 여기서 $\Delta_x$와 $\Delta y$를 유도할 수 있습니다. 즉, 입력 금액을 기준으로 출력 금액을 계산하거나 그 반대로도 계산할 수 있습니다:
 
 $$\Delta y = \frac{yr\Delta x}{x + r\Delta x}$$
 $$\Delta x = \frac{x \Delta y}{r(y - \Delta y)}$$
 
-In fact, these formulas free us from calculating prices! We can always find the output amount using the $\Delta y$ formula (when we want to sell a known amount of tokens) and we can always find the input amount using the $\Delta x$ formula (when we want to buy a known amount of tokens). Notice that each of these formulas is a relation of reserves ($x/y$ or $y/x$) and they also take the trade amount ($\Delta x$ in the former and $\Delta y$ in the latter) into consideration. **These are the pricing functions that respect both supply and demand**. And we don't even need to calculate the prices!
+사실, 이 공식들은 가격 계산으로부터 우리를 자유롭게 해줍니다! 우리는 항상 $\Delta y$ 공식을 사용하여 출력 금액을 찾을 수 있고 (알려진 양의 토큰을 판매하려는 경우), 항상 $\Delta x$ 공식을 사용하여 입력 금액을 찾을 수 있습니다 (알려진 양의 토큰을 구매하려는 경우). 각 공식은 준비금의 비율 ($x/y$ 또는 $y/x$)이며 거래 금액 ($\Delta x$는 전자의 경우, $\Delta y$는 후자의 경우)도 고려한다는 점에 유의하세요. **이것들은 수요와 공급을 모두 고려하는 가격 책정 함수입니다.** 그리고 우리는 가격을 계산할 필요조차 없습니다!
 
-> Here's how you can derive the above formulas from the trade function:
-$$(x + r\Delta x)(y - \Delta y) = xy$$
-$$y - \Delta y = \frac{xy}{x + r\Delta x}$$
-$$-\Delta y = \frac{xy}{x + r\Delta x} - y$$
-$$-\Delta y = \frac{xy - y({x + r\Delta x})}{x + r\Delta x}$$
-$$-\Delta y = \frac{xy - xy - y r \Delta x}{x + r\Delta x}$$
-$$-\Delta y = \frac{- y r \Delta x}{x + r\Delta x}$$
-$$\Delta y = \frac{y r \Delta x}{x + r\Delta x}$$
-And:
-$$(x + r\Delta x)(y - \Delta y) = xy$$
-$$x + r\Delta x = \frac{xy}{y - \Delta y}$$
-$$r\Delta x = \frac{xy}{y - \Delta y} - x$$
-$$r\Delta x = \frac{xy - x(y - \Delta y)}{y - \Delta y}$$
-$$r\Delta x = \frac{xy - xy + x \Delta y}{y - \Delta y}$$
-$$r\Delta x = \frac{x \Delta y}{y - \Delta y}$$
-$$\Delta x = \frac{x \Delta y}{r(y - \Delta y)}$$
+> 다음은 거래 함수에서 위 공식을 유도하는 방법입니다:
+> $$(x + r\Delta x)(y - \Delta y) = xy$$
+> $$y - \Delta y = \frac{xy}{x + r\Delta x}$$
+> $$-\Delta y = \frac{xy}{x + r\Delta x} - y$$
+> $$-\Delta y = \frac{xy - y({x + r\Delta x})}{x + r\Delta x}$$
+> $$-\Delta y = \frac{xy - xy - y r \Delta x}{x + r\Delta x}$$
+> $$-\Delta y = \frac{- y r \Delta x}{x + r\Delta x}$$
+> $$\Delta y = \frac{y r \Delta x}{x + r\Delta x}$$
+> 그리고:
+> $$(x + r\Delta x)(y - \Delta y) = xy$$
+> $$x + r\Delta x = \frac{xy}{y - \Delta y}$$
+> $$r\Delta x = \frac{xy}{y - \Delta y} - x$$
+> $$r\Delta x = \frac{xy - x(y - \Delta y)}{y - \Delta y}$$
+> $$r\Delta x = \frac{xy - xy + x \Delta y}{y - \Delta y}$$
+> $$r\Delta x = \frac{x \Delta y}{y - \Delta y}$$
+> $$\Delta x = \frac{x \Delta y}{r(y - \Delta y)}$$
 
-## The Curve
+## 곡선 (The Curve)
 
-The above calculations might seem too abstract and dry. Let's visualize the constant product function to better understand how it works.
+위의 계산은 너무 추상적이고 건조하게 느껴질 수 있습니다. 상수 곱 함수가 어떻게 작동하는지 더 잘 이해하기 위해 시각화해 보겠습니다.
 
-When plotted, the constant product function is a quadratic hyperbola:
+그래프에 그리면 상수 곱 함수는 이차 쌍곡선입니다:
 
-![The shape of the constant product formula curve](images/the_curve.png)
 
-Where axes are the pool reserves. Every trade starts at the point on the curve that corresponds to the current ratio of reserves. To calculate the output amount, we need to find a new point on the curve, which has the $x$ coordinate of $x+\Delta x$, i.e. current reserve of token 0 + the amount we're selling. The change in $y$ is the amount of token 1 we'll get.
 
-Let's look at a concrete example:
+![상수 곱 공식 곡선의 형태](images/the_curve.png)
 
-![Desmos chart example](images/desmos.png)
+여기서 축은 풀 준비금입니다. 모든 거래는 현재 준비금 비율에 해당하는 곡선 위의 점에서 시작됩니다. 출력 금액을 계산하려면 $x+\Delta x$의 $x$ 좌표, 즉 토큰 0의 현재 준비금 + 우리가 판매하는 금액을 갖는 곡선 위의 새로운 점을 찾아야 합니다. $y$의 변화량은 우리가 얻게 될 토큰 1의 양입니다.
 
-1. The purple line is the curve, and the axes are the reserves of a pool (notice that they're equal at the start price).
-1. The start price is 1.
-1. We're selling 200 of token 0. If we use only the start price, we expect to get 200 of token 1.
-1. However, the execution price is 0.666, so we get only 133.333 of token 1!
+구체적인 예를 살펴보겠습니다:
 
-This example is from [the Desmos chart](https://www.desmos.com/calculator/7wbvkts2jf) made by [Dan Robinson](https://twitter.com/danrobinson), one of the creators of Uniswap. To build a better intuition of how it works, try making up different scenarios and plotting them on the graph. Try different reserves, and see how the output amount changes when $\Delta x$ is small relative to $x$.
 
-> As the legend goes, Uniswap was invented in Desmos.
 
-I bet you're wondering why using such a curve. It might seem like it punishes you for trading big amounts. This is true, and this is a desirable property! The law of supply and demand tells us that when demand is high (and supply is constant) the price is also high. And when demand is low, the price is also lower. This is how markets work. And, magically, the constant product function implements this mechanism! Demand is defined by the amount you want to buy, and supply is the pool reserves. When you want to buy a big amount relative to pool reserves the price is higher than when you want to buy a smaller amount. Such a simple formula guarantees such a powerful mechanism!
+![Desmos 차트 예시](images/desmos.png)
 
-Even though Uniswap doesn't calculate trade prices, we can still see them on the curve. Surprisingly, there are multiple prices when making a trade:
+1. 보라색 선은 곡선이고, 축은 풀의 준비금입니다 (시작 가격에서 동일하다는 점에 유의하세요).
+2. 시작 가격은 1입니다.
+3. 토큰 0을 200개 판매합니다. 시작 가격만 사용하면 토큰 1을 200개 얻을 것으로 예상합니다.
+4. 그러나 실행 가격은 0.666이므로 토큰 1을 133.333개만 얻습니다!
 
-1. Before a trade, there's *a spot price*. It's equal to the relation of reserves, $\frac{y}{x}$ or $\frac{x}{y}$ depending on the direction of the trade. This price is also *the slope of the tangent line* at the starting point.
-1. After a trade, there's a new spot price, at a different point on the curve. And it's the slope of the tangent line at this new point.
-1. The actual price of the trade is the slope of the line connecting the two points!
+이 예시는 Uniswap 제작자 중 한 명인 [Dan Robinson](https://twitter.com/danrobinson)이 만든 [Desmos 차트](https://www.desmos.com/calculator/7wbvkts2jf)에서 가져온 것입니다. 작동 방식에 대한 더 나은 직관을 얻으려면 다양한 시나리오를 만들고 그래프에 플롯해 보세요. 다른 준비금을 시도해보고 $\Delta x$가 $x$에 비해 작을 때 출력 금액이 어떻게 변하는지 확인하세요.
 
-**And that's the whole math of Uniswap! Phew!**
+> 전설에 따르면 Uniswap은 Desmos에서 발명되었습니다.
 
-Well, this is the math of Uniswap V2, and we're studying Uniswap V3. So in the next part, we'll see how the mathematics of Uniswap V3 is different.
+왜 이런 곡선을 사용하는지 궁금하실 겁니다. 큰 금액을 거래하면 벌을 받는 것처럼 보일 수도 있습니다. 이것은 사실이며, 이는 바람직한 속성입니다! 수요와 공급의 법칙은 수요가 높을 때 (그리고 공급이 일정할 때) 가격도 높아진다고 말합니다. 그리고 수요가 낮을 때 가격도 낮아집니다. 이것이 시장이 작동하는 방식입니다. 그리고 마법처럼, 상수 곱 함수는 이 메커니즘을 구현합니다! 수요는 구매하려는 금액으로 정의되고, 공급은 풀 준비금입니다. 풀 준비금에 비해 많은 양을 구매하려는 경우, 더 적은 양을 구매하려는 경우보다 가격이 더 높습니다. 이처럼 간단한 공식이 이처럼 강력한 메커니즘을 보장합니다!
+
+Uniswap은 거래 가격을 계산하지 않더라도 곡선에서 가격을 확인할 수 있습니다. 놀랍게도 거래를 할 때 여러 가격이 있습니다:
+
+1. 거래 전에는 *현물 가격*이 있습니다. 이는 거래 방향에 따라 준비금의 비율, $\frac{y}{x}$ 또는 $\frac{x}{y}$와 같습니다. 이 가격은 시작점에서의 *접선의 기울기*이기도 합니다.
+2. 거래 후에는 곡선 위의 다른 지점에서 새로운 현물 가격이 있습니다. 그리고 이는 이 새로운 지점에서의 접선의 기울기입니다.
+3. 실제 거래 가격은 두 점을 연결하는 선의 기울기입니다!
+
+**이것이 Uniswap의 모든 수학입니다! 휴!**
+
+음, 이것은 Uniswap V2의 수학이고, 우리는 Uniswap V3를 공부하고 있습니다. 따라서 다음 파트에서는 Uniswap V3의 수학이 어떻게 다른지 살펴보겠습니다.

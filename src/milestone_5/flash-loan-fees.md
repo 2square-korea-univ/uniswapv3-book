@@ -1,8 +1,8 @@
-# Flash Loan Fees
+# 플래시 론 수수료
 
-In a previous chapter, we implemented flash loans and made them free. However, Uniswap collects swap fees on flash loans, and we're going to add this to our implementation: the amounts repaid by flash loan borrowers must include a fee.
+이전 장에서 우리는 플래시 론을 구현했고 무료로 만들었습니다. 하지만, Uniswap은 플래시 론에 대해 스왑 수수료를 징수합니다. 그리고 우리는 이것을 우리 구현에 추가할 것입니다: 플래시 론 차용자가 상환하는 금액은 수수료를 포함해야 합니다.
 
-Here's what the updated `flash` function looks like:
+업데이트된 `flash` 함수는 다음과 같습니다:
 ```solidity
 function flash(
     uint256 amount0,
@@ -33,4 +33,4 @@ function flash(
 }
 ```
 
-What's changed is that we're now calculating fees on the amounts requested by the caller and then expect pool balances to have grown by the fee amounts.
+변경된 점은 이제 호출자가 요청한 금액에 대해 수수료를 계산하고, 풀 잔액이 수수료 금액만큼 증가할 것으로 예상한다는 것입니다.

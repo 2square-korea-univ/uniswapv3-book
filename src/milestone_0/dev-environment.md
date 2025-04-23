@@ -1,103 +1,103 @@
-# Development Environment
+## 개발 환경
 
-We're going to build two applications:
+본 서적에서는 다음 두 가지 애플리케이션을 구축할 것입니다.
 
-1. An on-chain one: a set of smart contracts deployed on Ethereum.
-1. An off-chain one: a front-end application that will interact with the smart contracts.
+1. 온체인 애플리케이션: 이더리움에 배포된 스마트 컨트랙트 세트.
+2. 오프체인 애플리케이션: 스마트 컨트랙트와 상호 작용하는 프론트엔드 애플리케이션.
 
-While the front-end application development is part of this book, it won't be our main focus. We will build it solely to demonstrate how smart contracts are integrated with front-end applications. Thus, the front-end application is optional, but I'll still provide the code.
+프론트엔드 애플리케이션 개발 또한 본 서적의 일부이지만, 주요 초점은 아닙니다. 스마트 컨트랙트가 프론트엔드 애플리케이션과 어떻게 통합되는지 보여주기 위한 목적으로만 구축할 것입니다. 따라서 프론트엔드 애플리케이션은 선택 사항이지만, 코드는 제공할 예정입니다.
 
-## Quick Introduction to Ethereum
+## 이더리움에 대한 간략한 소개
 
-Ethereum is a blockchain that allows anyone to run applications on it. It might look like a cloud provider, but there are multiple differences:
-1. You don't pay for hosting your application. But you pay for deployment.
-1. Your application is immutable. That is: you won't be able to modify it after it's deployed.
-1. Users will pay to use your application.
+이더리움은 누구나 애플리케이션을 실행할 수 있는 블록체인입니다. 클라우드 제공업체처럼 보일 수도 있지만, 다음과 같은 여러 차이점이 있습니다.
+1. 애플리케이션 호스팅 비용을 지불하지 않습니다. 하지만 배포 비용은 지불합니다.
+2. 애플리케이션은 불변합니다. 즉, 배포 후에는 수정할 수 없습니다.
+3. 사용자는 애플리케이션을 사용하기 위해 비용을 지불합니다.
 
-To better understand these moments, let's see what Ethereum is made of.
+이러한 특징을 더 잘 이해하기 위해 이더리움이 어떻게 구성되어 있는지 살펴보겠습니다.
 
-At the core of Ethereum (and any other blockchain) is a database. The most valuable data in Ethereum's database is *the state of accounts*. An account is an Ethereum address with associated data:
+이더리움 (및 다른 모든 블록체인)의 핵심은 데이터베이스입니다. 이더리움 데이터베이스에서 가장 가치 있는 데이터는 *계정 상태*입니다. 계정은 연결된 데이터를 가진 이더리움 주소입니다.
 
-1. Balance: account's ether balance.
-1. Code: bytecode of the smart contract deployed at this address.
-1. Storage: space used by smart contracts to store data.
-1. Nonce: a serial integer that's used to protect against replay attacks.
+1. 잔액: 계정의 이더 잔액.
+2. 코드: 이 주소에 배포된 스마트 컨트랙트의 바이트코드.
+3. 스토리지: 스마트 컨트랙트가 데이터를 저장하는 데 사용하는 공간.
+4. 논스: 재전송 공격을 방지하는 데 사용되는 연속적인 정수.
 
-Ethereum's main job is building and maintaining this data in a secure way that doesn't allow unauthorized access.
+이더리움의 주요 임무는 무단 접근을 허용하지 않는 안전한 방식으로 이 데이터를 구축하고 유지하는 것입니다.
 
-Ethereum is also a network, a network of computers that build and maintain the state independently of each other. The main goal of the network is to **decentralize access to the database**: there must be no single authority that's allowed to modify anything in the database unilaterally. This is achieved through *consensus*, which is a set of rules all the nodes in the network follow. If one party decides to abuse a rule, it'll be excluded from the network.
+이더리움은 또한 네트워크, 즉 서로 독립적으로 상태를 구축하고 유지하는 컴퓨터 네트워크입니다. 네트워크의 주요 목표는 **데이터베이스에 대한 접근을 탈중앙화**하는 것입니다. 즉, 데이터베이스에서 어떤 것이든 일방적으로 수정할 수 있는 단일 권한이 없어야 합니다. 이는 네트워크의 모든 노드가 따르는 규칙 집합인 *합의*를 통해 달성됩니다. 한 당사자가 규칙을 남용하기로 결정하면 네트워크에서 제외됩니다.
 
-> Fun fact: blockchain can use MySQL! Nothing prevents this besides performance. In its turn, Ethereum uses [LevelDB](https://github.com/google/leveldb), a fast key-value database.
+> 재미있는 사실: 블록체인은 MySQL을 사용할 수 있습니다! 성능 외에는 막을 수 있는 것이 없습니다. 이더리움은 그 대신 빠른 키-값 데이터베이스인 [LevelDB](https://github.com/google/leveldb)를 사용합니다.
 
-Every Ethereum node also runs EVM, Ethereum Virtual Machine. A virtual machine is a program that can run other programs, and EVM is a program that executes smart contracts. Users interact with contracts through transactions: besides simply sending ether, transactions can contain smart contract call data. It includes:
+모든 이더리움 노드는 EVM(Ethereum Virtual Machine, 이더리움 가상 머신)도 실행합니다. 가상 머신은 다른 프로그램을 실행할 수 있는 프로그램이며, EVM은 스마트 컨트랙트를 실행하는 프로그램입니다. 사용자는 트랜잭션을 통해 컨트랙트와 상호 작용합니다. 트랜잭션은 단순히 이더를 보내는 것 외에도 스마트 컨트랙트 호출 데이터를 포함할 수 있습니다. 여기에는 다음이 포함됩니다.
 
-1. An encoded contract function name.
-2. Function parameters.
+1. 인코딩된 컨트랙트 함수 이름.
+2. 함수 매개변수.
 
-Transactions are packed in blocks and blocks are then mined by miners. Each participant in the network can validate any transaction and any block.
+트랜잭션은 블록에 패킹되고 블록은 채굴자에 의해 채굴됩니다. 네트워크의 각 참여자는 모든 트랜잭션과 모든 블록을 검증할 수 있습니다.
 
-In a sense, smart contracts are similar to JSON APIs but instead of endpoints you call smart contract functions and you provide function arguments. Similar to API backends, smart contracts execute programmed logic, which can optionally modify smart contract storage. Unlike JSON API, you need to send a transaction to mutate the blockchain state, and you'll need to pay for each transaction you're sending.
+어떤 의미에서 스마트 컨트랙트는 JSON API와 유사하지만, 엔드포인트 대신 스마트 컨트랙트 함수를 호출하고 함수 인수를 제공합니다. API 백엔드와 유사하게 스마트 컨트랙트는 프로그래밍된 로직을 실행하며, 선택적으로 스마트 컨트랙트 스토리지를 수정할 수 있습니다. JSON API와 달리 블록체인 상태를 변경하려면 트랜잭션을 보내야 하며, 보내는 각 트랜잭션에 대해 비용을 지불해야 합니다.
 
-Finally, Ethereum nodes expose a JSON-RPC API. Through this API we can interact with a node to: get account balance, estimate gas costs, get blocks and transactions, send transactions, and execute contract calls without sending transactions (this is used to read data from smart contracts). [Here](https://eth.wiki/json-rpc/API) you can find the full list of available endpoints.
+마지막으로 이더리움 노드는 JSON-RPC API를 노출합니다. 이 API를 통해 노드와 상호 작용하여 계정 잔액 가져오기, 가스 비용 추정, 블록 및 트랜잭션 가져오기, 트랜잭션 보내기, 트랜잭션 전송 없이 컨트랙트 호출 실행 (스마트 컨트랙트에서 데이터를 읽는 데 사용됨) 등을 할 수 있습니다. 사용 가능한 전체 엔드포인트 목록은 [여기](https://eth.wiki/json-rpc/API)에서 확인할 수 있습니다.
 
-> Transactions are also sent through the JSON-RPC API, see [eth_sendTransaction](https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_sendtransaction).
+> 트랜잭션 또한 JSON-RPC API를 통해 전송됩니다. [eth_sendTransaction](https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_sendtransaction)을 참조하십시오.
 
-## Local Development Environment
+## 로컬 개발 환경
 
-Multiple smart contract development environments are used today:
+오늘날 여러 스마트 컨트랙트 개발 환경이 사용됩니다.
 1. [Truffle](https://trufflesuite.com)
-1. [Hardhat](https://hardhat.org)
-1. [Foundry](https://github.com/foundry-rs/foundry)
+2. [Hardhat](https://hardhat.org)
+3. [Foundry](https://github.com/foundry-rs/foundry)
 
-Truffle is the oldest of the three and is the least popular of them. Hardhat is its improved descendant and is the most widely used tool. Foundry is the new kid on the block, which brings a different view on testing.
+Truffle은 세 가지 중 가장 오래되었으며 가장 인기가 적습니다. Hardhat은 개선된 후손이며 가장 널리 사용되는 도구입니다. Foundry는 테스트에 대한 다른 관점을 제시하는 새로운 강자입니다.
 
-While HardHat is still a popular solution, more and more projects are switching to Foundry. And there are multiple reasons for that:
-1. With Foundry, we can write tests in Solidity. This is much more convenient because we don't need to jump between JavaScript (Truffle and HardHat use JS for tests and automation) and Solidity during development. Writing tests in Solidity is much more convenient because you have all the native features (e.g. you don't need a special type for big numbers and you don't need to convert between strings and [BigNumber](https://docs.ethers.io/v5/api/utils/bignumber/)).
-1. Foundry doesn't run a node during testing. This makes testing and iterating on features much faster! Truffle and HardHat start a node whenever you run tests; Foundry executes tests on an internal EVM.
+HardHat이 여전히 인기 있는 솔루션이지만, 점점 더 많은 프로젝트가 Foundry로 전환하고 있습니다. 그리고 그 이유는 여러 가지가 있습니다.
+1. Foundry를 사용하면 Solidity로 테스트를 작성할 수 있습니다. 개발 중에 JavaScript (Truffle과 HardHat은 테스트 및 자동화에 JS를 사용)와 Solidity 사이를 왔다 갔다 할 필요가 없기 때문에 훨씬 편리합니다. Solidity로 테스트를 작성하는 것이 훨씬 편리합니다. 모든 기본 기능 (예: 큰 숫자에 대한 특수 유형이 필요 없고 문자열과 [BigNumber](https://docs.ethers.io/v5/api/utils/bignumber/) 사이를 변환할 필요가 없음)을 사용할 수 있기 때문입니다.
+2. Foundry는 테스트 중에 노드를 실행하지 않습니다. 이로 인해 기능 테스트 및 반복 작업이 훨씬 빨라집니다! Truffle과 HardHat은 테스트를 실행할 때마다 노드를 시작합니다. Foundry는 내부 EVM에서 테스트를 실행합니다.
 
-That being said, we'll use Foundry as our main smart contract development and testing tool.
+그렇긴 하지만, Foundry를 주요 스마트 컨트랙트 개발 및 테스트 도구로 사용할 것입니다.
 
 ### Foundry
 
-[Foundry](https://github.com/foundry-rs/foundry) is a set of tools for Ethereum applications development. Specifically, we're going to use:
-1. [Forge](https://github.com/foundry-rs/foundry/tree/master/forge), a testing framework for Solidity.
-1. [Anvil](https://github.com/foundry-rs/foundry/tree/master/anvil), a local Ethereum node designed for development with Forge. We'll use it to deploy our contracts to a local node and connect to it through the front-end app.
-1. [Cast](https://github.com/foundry-rs/foundry/tree/master/cast), a CLI tool with a ton of helpful features.
+[Foundry](https://github.com/foundry-rs/foundry)는 이더리움 애플리케이션 개발을 위한 도구 세트입니다. 특히 다음을 사용할 것입니다.
+1. [Forge](https://github.com/foundry-rs/foundry/tree/master/forge), Solidity용 테스트 프레임워크.
+2. [Anvil](https://github.com/foundry-rs/foundry/tree/master/anvil), Forge를 이용한 개발을 위해 설계된 로컬 이더리움 노드. 컨트랙트를 로컬 노드에 배포하고 프론트엔드 앱을 통해 연결하는 데 사용할 것입니다.
+3. [Cast](https://github.com/foundry-rs/foundry/tree/master/cast), 유용한 기능이 많은 CLI 도구.
 
-Forge makes smart contracts developer's life so much easier. With Forge, we don't need to run a local node to test contracts. Instead, Forge runs tests on its internal EVM, which is much faster and doesn't require sending transactions and mining blocks.
+Forge는 스마트 컨트랙트 개발자의 삶을 훨씬 쉽게 만들어줍니다. Forge를 사용하면 컨트랙트를 테스트하기 위해 로컬 노드를 실행할 필요가 없습니다. 대신 Forge는 내부 EVM에서 테스트를 실행하며, 이는 훨씬 빠르고 트랜잭션 전송 및 블록 채굴이 필요하지 않습니다.
 
-Forge lets us write tests in Solidity! Forge also makes it easier to simulate blockchain state: we can easily fake our ether or token balance, execute contracts from other addresses, deploy any contracts at any address, etc.
+Forge를 사용하면 Solidity로 테스트를 작성할 수 있습니다! 또한 Forge는 블록체인 상태를 더 쉽게 시뮬레이션할 수 있도록 합니다. 이더 또는 토큰 잔액을 쉽게 위조하고, 다른 주소에서 컨트랙트를 실행하고, 임의의 주소에 컨트랙트를 배포하는 등을 할 수 있습니다.
 
-However, we'll still need a local node to deploy our contract to. For that, we'll use Anvil. Front-end applications use JavaScript Web3 libraries to interact with Ethereum nodes (to send transactions, query state, estimate transaction gas cost, etc.)–this is why we'll need to run a local node.
+그러나 컨트랙트를 배포하려면 여전히 로컬 노드가 필요합니다. 이를 위해 Anvil을 사용할 것입니다. 프론트엔드 애플리케이션은 JavaScript Web3 라이브러리를 사용하여 이더리움 노드와 상호 작용합니다 (트랜잭션 전송, 상태 쿼리, 트랜잭션 가스 비용 추정 등). 이것이 로컬 노드를 실행해야 하는 이유입니다.
 
 ### Ethers.js
 
-[Ethers.js](https://github.com/ethers-io/ethers.js/) is a set of Ethereum utilities written in JavaScript. This is one of the two (the other one is [web3.js](https://github.com/ChainSafe/web3.js)) most popular JavaScript libraries used in decentralized applications development. These libraries allow us to interact with an Ethereum node via the JSON-API, and they come with multiple utility functions that make the developer's life easier.
+[Ethers.js](https://github.com/ethers-io/ethers.js/)는 JavaScript로 작성된 이더리움 유틸리티 세트입니다. 이것은 탈중앙화 애플리케이션 개발에 사용되는 가장 인기 있는 JavaScript 라이브러리 두 가지 중 하나입니다 (다른 하나는 [web3.js](https://github.com/ChainSafe/web3.js)입니다). 이러한 라이브러리를 사용하면 JSON-API를 통해 이더리움 노드와 상호 작용할 수 있으며, 개발자의 삶을 더 쉽게 만들어주는 여러 유틸리티 기능이 함께 제공됩니다.
 
 ### MetaMask
 
-[MetaMask](https://metamask.io/) is an Ethereum wallet in your browser. It's a browser extension that creates and securely stores private keys. MetaMask is the main Ethereum wallet application used by millions of users. We'll use it to sign transactions that we'll send to our local node.
+[MetaMask](https://metamask.io/)는 브라우저 내 이더리움 지갑입니다. 개인 키를 생성하고 안전하게 저장하는 브라우저 확장 프로그램입니다. MetaMask는 수백만 명의 사용자가 사용하는 주요 이더리움 지갑 애플리케이션입니다. 로컬 노드로 보낼 트랜잭션에 서명하는 데 사용할 것입니다.
 
 ### React
 
-[React](https://reactjs.org/) is a well-known JavaScript library for building front-end applications. You don't need to know React, I'll provide a template application.
+[React](https://reactjs.org/)는 프론트엔드 애플리케이션 구축을 위한 잘 알려진 JavaScript 라이브러리입니다. React를 알 필요는 없습니다. 템플릿 애플리케이션을 제공할 것입니다.
 
-## Setting up the Project
+## 프로젝트 설정
 
-To set up the project, create a new folder and run `forge init` in it:
+프로젝트를 설정하려면 새 폴더를 만들고 그 안에서 `forge init`을 실행하십시오.
 ```shell
 $ mkdir uniswapv3clone
 $ cd uniswapv3clone
 $ forge init
 ```
 
-> If you're using Visual Studio Code, add `--vscode` flag to `forge init`: `forge init --vscode`. Forge will initialize the project with VSCode-specific settings.
+> Visual Studio Code를 사용하는 경우 `forge init`에 `--vscode` 플래그를 추가하십시오. `forge init --vscode`. Forge는 VSCode 관련 설정을 사용하여 프로젝트를 초기화합니다.
 
-Forge will create sample contracts in the `src`, `test`, and `script` folders–these can be removed.
+Forge는 `src`, `test`, `script` 폴더에 샘플 컨트랙트를 생성합니다. 이들은 제거할 수 있습니다.
 
-To set up the front-end application:
+프론트엔드 애플리케이션을 설정하려면 다음을 수행하십시오.
 ```shell
 $ npx create-react-app ui
 ```
 
-It's located in a subfolder so there's no conflict between folder names.
+폴더 이름 간의 충돌이 없도록 하위 폴더에 위치합니다.

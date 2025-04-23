@@ -1,10 +1,10 @@
-# Generalized Swapping
+## 일반화된 스왑
 
-This will be the hardest chapter of this milestone. Before updating the code, we need to understand how the algorithm of swapping in Uniswap V3 works.
+이번 마일스톤에서 가장 어려운 챕터입니다. 코드를 업데이트하기 전에 Uniswap V3의 스왑 알고리즘이 어떻게 작동하는지 이해해야 합니다.
 
-You can think of a swap as of filling of an order: a user submits an order to buy a specified amount of tokens from a pool.  The pool will use the available liquidity to "convert" the input amount into an output amount of the other token. If there's not enough liquidity in the current price range, it'll try to find liquidity in other price ranges (using the function we implemented in the previous chapter).
+스왑은 주문 이행으로 생각할 수 있습니다. 사용자가 풀에서 특정 양의 토큰을 구매하는 주문을 제출합니다. 풀은 사용 가능한 유동성을 사용하여 입력된 양을 다른 토큰의 출력량으로 "변환"합니다. 현재 가격 범위에 충분한 유동성이 없다면, 다른 가격 범위에서 유동성을 찾으려고 시도합니다 (이전 챕터에서 구현한 함수 사용).
 
-We're now going to implement this logic in the `swap` function, however going to stay only within the current price range for now–we'll implement cross-tick swaps in the next milestone.
+이제 `swap` 함수에서 이 로직을 구현할 것입니다. 하지만 당분간은 현재 가격 범위 내에서만 머무를 것입니다. 틱 간 스왑 (cross-tick swaps)은 다음 마일스톤에서 구현할 예정입니다.
 
 ```solidity
 function swap(
@@ -16,13 +16,13 @@ function swap(
     ...
 ```
 
-In the `swap` function, we add two new parameters: `zeroForOne` and `amountSpecified`. `zeroForOne` is the flag that controls swap direction: when `true`, `token0` is traded in for `token1`; when `false,` it's the opposite. For example, if `token0` is ETH and `token1` is USDC, setting `zeroForOne` to `true` means buying USDC for ETH. `amountSpecified` is the number of tokens the user wants to sell.
+`swap` 함수에 두 개의 새로운 매개변수 `zeroForOne`과 `amountSpecified`를 추가합니다. `zeroForOne`은 스왑 방향을 제어하는 플래그입니다. `true`이면 `token0`을 `token1`으로 교환하고, `false`이면 반대 방향으로 교환합니다. 예를 들어, `token0`이 ETH이고 `token1`이 USDC인 경우, `zeroForOne`을 `true`로 설정하면 ETH로 USDC를 구매하는 것을 의미합니다. `amountSpecified`는 사용자가 판매하려는 토큰의 양입니다.
 
-## Filling Orders
+## 주문 이행 (Filling Orders)
 
-Since, in Uniswap V3, liquidity is stored in multiple price ranges, the Pool contract needs to find all liquidity that's required to "fill an order" from the user. This is done via iterating over initialized ticks in a direction chosen by the user.
+Uniswap V3에서는 유동성이 여러 가격 범위에 저장되기 때문에, 풀 컨트랙트는 사용자로부터 "주문을 이행"하는 데 필요한 모든 유동성을 찾아야 합니다. 이는 사용자가 선택한 방향으로 초기화된 틱을 반복하여 수행됩니다.
 
-Before continuing, we need to define two new structures:
+계속하기 전에 두 개의 새로운 구조체를 정의해야 합니다.
 ```solidity
 struct SwapState {
     uint256 amountSpecifiedRemaining;
@@ -40,11 +40,11 @@ struct StepState {
 }
 ```
 
-`SwapState` maintains the current swap's state. `amountSpecifiedRemaining` tracks the remaining amount of tokens that need to be bought by the pool. When it's zero, the swap is done. `amountCalculated` is the out amount calculated by the contract. `sqrtPriceX96` and `tick` are the new current price and tick after a swap is done.
+`SwapState`는 현재 스왑의 상태를 유지합니다. `amountSpecifiedRemaining`은 풀이 구매해야 하는 토큰의 남은 양을 추적합니다. 이 값이 0이 되면 스왑이 완료된 것입니다. `amountCalculated`는 컨트랙트에서 계산한 출력량입니다. `sqrtPriceX96`과 `tick`은 스왑 완료 후의 새로운 현재 가격과 틱입니다.
 
-`StepState` maintains the current swap step's state. This structure tracks the state of **one iteration** of an "order filling".  `sqrtPriceStartX96` tracks the price the iteration begins with. `nextTick` is the next initialized tick that will provide liquidity for the swap and `sqrtPriceNextX96` is the price at the next tick. `amountIn` and `amountOut` are amounts that can be provided by the liquidity of the current iteration.
+`StepState`는 현재 스왑 단계의 상태를 유지합니다. 이 구조체는 "주문 이행"의 **한 번의 반복** 상태를 추적합니다. `sqrtPriceStartX96`은 반복이 시작되는 가격을 추적합니다. `nextTick`은 스왑에 유동성을 제공할 다음 초기화된 틱이고, `sqrtPriceNextX96`은 다음 틱의 가격입니다. `amountIn`과 `amountOut`은 현재 반복의 유동성으로 제공될 수 있는 양입니다.
 
-> After we implement cross-tick swaps (that is, swaps that happen across multiple price ranges), the idea of iterating will be clearer.
+> 틱 간 스왑 (즉, 여러 가격 범위를 넘나드는 스왑)을 구현하고 나면, 반복의 개념이 더 명확해질 것입니다.
 
 ```solidity
 // src/UniswapV3Pool.sol
@@ -61,7 +61,7 @@ function swap(...) {
     ...
 ```
 
-Before filling an order, we initialize a `SwapState` instance. We'll loop until `amountSpecifiedRemaining` is 0, which will mean that the pool has enough liquidity to buy `amountSpecified` tokens from the user.
+주문을 이행하기 전에 `SwapState` 인스턴스를 초기화합니다. `amountSpecifiedRemaining`이 0이 될 때까지 루프를 돌 것입니다. 이는 풀이 사용자로부터 `amountSpecified` 토큰을 구매하기에 충분한 유동성을 가지고 있다는 것을 의미합니다.
 
 ```solidity
 ...
@@ -79,7 +79,7 @@ while (state.amountSpecifiedRemaining > 0) {
     step.sqrtPriceNextX96 = TickMath.getSqrtRatioAtTick(step.nextTick);
 ```
 
-In the loop, we set up a price range that should provide liquidity for the swap. The range is from `state.sqrtPriceX96` to `step.sqrtPriceNextX96`, where the latter is the price at the next initialized tick (as returned by `nextInitializedTickWithinOneWord`–we know this function from a previous chapter).
+루프에서 스왑에 유동성을 제공해야 하는 가격 범위를 설정합니다. 범위는 `state.sqrtPriceX96`에서 `step.sqrtPriceNextX96`까지이며, 후자는 다음 초기화된 틱의 가격입니다 (`nextInitializedTickWithinOneWord`에서 반환됨 - 이전 챕터에서 이 함수를 알고 있습니다).
 
 ```solidity
 (state.sqrtPriceX96, step.amountIn, step.amountOut) = SwapMath
@@ -91,7 +91,7 @@ In the loop, we set up a price range that should provide liquidity for the swap.
     );
 ```
 
-Next, we're calculating the amounts that can be provided by the current price range, and the new current price the swap will result in.
+다음으로 현재 가격 범위에서 제공할 수 있는 양과 스왑으로 인해 발생하는 새로운 현재 가격을 계산합니다.
 
 ```solidity
     state.amountSpecifiedRemaining -= step.amountIn;
@@ -100,11 +100,11 @@ Next, we're calculating the amounts that can be provided by the current price ra
 }
 ```
 
-The final step in the loop is updating the SwapState. `step.amountIn` is the number of tokens the price range can buy from the user; `step.amountOut` is the related number of the other token the pool can sell to the user. `state.sqrtPriceX96` is the current price that will be set after the swap (recall that trading changes current price).
+루프의 마지막 단계는 `SwapState`를 업데이트하는 것입니다. `step.amountIn`은 가격 범위가 사용자로부터 구매할 수 있는 토큰의 수이고, `step.amountOut`은 풀이 사용자에게 판매할 수 있는 다른 토큰의 관련 수입니다. `state.sqrtPriceX96`은 스왑 후에 설정될 현재 가격입니다 (거래는 현재 가격을 변경한다는 것을 상기하십시오).
 
-## SwapMath Contract
+## SwapMath 컨트랙트
 
-Let's look closer at `SwapMath.computeSwapStep`.
+`SwapMath.computeSwapStep`을 더 자세히 살펴보겠습니다.
 
 ```solidity
 // src/lib/SwapMath.sol
@@ -125,7 +125,7 @@ function computeSwapStep(
     ...
 ```
 
-This is the core logic of swapping. The function calculates swap amounts within one price range and respecting available liquidity. It'll return: the new current price and input and output token amounts. Even though the input amount is provided by the user, we still calculate it to know how much of the user-specified input amount was processed by one call to `computeSwapStep`.
+이것이 스왑의 핵심 로직입니다. 이 함수는 하나의 가격 범위 내에서 그리고 사용 가능한 유동성을 고려하여 스왑 양을 계산합니다. 새로운 현재 가격과 입력 및 출력 토큰 양을 반환합니다. 입력 양은 사용자가 제공하지만, `computeSwapStep` 호출 한 번으로 사용자 지정 입력 양 중 얼마나 처리되었는지 알기 위해 여전히 계산합니다.
 
 ```solidity
 bool zeroForOne = sqrtPriceCurrentX96 >= sqrtPriceTargetX96;
@@ -138,9 +138,9 @@ sqrtPriceNextX96 = Math.getNextSqrtPriceFromInput(
 );
 ```
 
-By checking the price, we can determine the direction of the swap. Knowing the direction, we can calculate the price after swapping the `amountRemaining` of tokens. We'll return to this function below.
+가격을 확인하여 스왑 방향을 결정할 수 있습니다. 방향을 알면 `amountRemaining` 토큰을 스왑한 후의 가격을 계산할 수 있습니다. 이 함수에 대해서는 아래에서 다시 설명하겠습니다.
 
-After finding the new price, we can calculate the input and output amounts of the swap using the function we already have ( the same functions we used to calculate token amounts from liquidity in the `mint` function):
+새로운 가격을 찾은 후에는 이미 가지고 있는 함수 ( `mint` 함수에서 유동성으로부터 토큰 양을 계산하는 데 사용했던 것과 동일한 함수) 를 사용하여 스왑의 입력 및 출력 양을 계산할 수 있습니다.
 ```solidity
 amountIn = Math.calcAmount0Delta(
     sqrtPriceCurrentX96,
@@ -154,20 +154,20 @@ amountOut = Math.calcAmount1Delta(
 );
 ```
 
-And swap the amounts if the direction is opposite:
+그리고 방향이 반대인 경우 양을 스왑합니다.
 ```solidity
 if (!zeroForOne) {
     (amountIn, amountOut) = (amountOut, amountIn);
 }
 ```
 
-That's it for `computeSwapStep`!
+`computeSwapStep`에 대한 설명은 여기까지입니다!
 
-## Finding Price by Swap Amount
+## 스왑 양으로 가격 찾기
 
-Let's now look at `Math.getNextSqrtPriceFromInput`–the function calculates a $\sqrt{P}$ given another $\sqrt{P}$, liquidity, and input amount. It tells what the price will be after swapping the specified input amount of tokens, given the current price and liquidity.
+이제 `Math.getNextSqrtPriceFromInput`을 살펴보겠습니다. 이 함수는 다른 $\sqrt{P}$, 유동성 및 입력 양이 주어졌을 때 $\sqrt{P}$를 계산합니다. 현재 가격과 유동성이 주어졌을 때 지정된 입력 토큰 양을 스왑한 후의 가격이 어떻게 될지 알려줍니다.
 
-The good news is that we already know the formulas: recall how we calculated `price_next` in Python:
+좋은 소식은 이미 공식을 알고 있다는 것입니다. Python에서 `price_next`를 계산했던 방법을 상기해 보세요.
 ```python
 # When amount_in is token0
 price_next = int((liq * q96 * sqrtp_cur) // (liq * q96 + amount_in * sqrtp_cur))
@@ -175,7 +175,7 @@ price_next = int((liq * q96 * sqrtp_cur) // (liq * q96 + amount_in * sqrtp_cur))
 price_next = sqrtp_cur + (amount_in * q96) // liq
 ```
 
-We're going to implement this in Solidity:
+이것을 Solidity로 구현할 것입니다.
 ```solidity
 // src/lib/Math.sol
 function getNextSqrtPriceFromInput(
@@ -198,7 +198,7 @@ function getNextSqrtPriceFromInput(
 }
 ```
 
-The function handles swapping in both directions. Since calculations are different, we'll implement them in separate functions.
+이 함수는 양방향 스왑을 처리합니다. 계산이 다르기 때문에 별도의 함수로 구현할 것입니다.
 
 ```solidity
 function getNextSqrtPriceFromAmount0RoundingUp(
@@ -225,15 +225,15 @@ function getNextSqrtPriceFromAmount0RoundingUp(
         );
 }
 ```
-In this function, we're implementing two formulas. At the first `return`, it implements the same formula we implemented in Python. This is the most precise formula, but it can overflow when multiplying `amountIn` by `sqrtPriceX96`. The formula is (we discussed it in "Output Amount Calculation"):
+이 함수에서는 두 가지 공식을 구현합니다. 첫 번째 `return`에서 Python에서 구현한 것과 동일한 공식을 구현합니다. 이것이 가장 정확한 공식이지만, `amountIn`과 `sqrtPriceX96`을 곱할 때 오버플로가 발생할 수 있습니다. 공식은 ( "출력량 계산"에서 논의했습니다):
 $$\sqrt{P_{target}} = \frac{\sqrt{P}L}{\Delta x \sqrt{P} + L}$$
 
-When it overflows, we use an alternative formula, which is less precise:
+오버플로가 발생하면 덜 정확한 대안 공식을 사용합니다.
 $$\sqrt{P_{target}} = \frac{L}{\Delta x + \frac{L}{\sqrt{P}}}$$
 
-Which is simply the previous formula with the numerator and the denominator divided by $\sqrt{P}$ to get rid of the multiplication in the numerator.
+이는 단순히 분자와 분모를 $\sqrt{P}$로 나누어 분자의 곱셈을 제거한 이전 공식입니다.
 
-The other function has simpler math:
+다른 함수는 더 간단한 수학을 사용합니다.
 ```solidity
 function getNextSqrtPriceFromAmount1RoundingDown(
     uint160 sqrtPriceX96,
@@ -246,12 +246,11 @@ function getNextSqrtPriceFromAmount1RoundingDown(
 }
 ```
 
-## Finishing the Swap
+## 스왑 완료
 
-Now, let's return to the `swap` function and finish it.
+이제 `swap` 함수로 돌아가서 완료해 보겠습니다.
 
-By this moment, we have looped over the next initialized ticks, filled `amountSpecified` specified by the user, calculated input and amount amounts, and found a new price and tick. Since, in this milestone, we're implementing only swaps within one price range, this is enough. We now need to update the contract's state, send tokens to the user, and get tokens in exchange.
-
+이 시점에서 다음 초기화된 틱을 반복하고, 사용자가 지정한 `amountSpecified`를 이행하고, 입력 및 출력 양을 계산하고, 새로운 가격과 틱을 찾았습니다. 이 마일스톤에서는 하나의 가격 범위 내에서만 스왑을 구현하므로 이것으로 충분합니다. 이제 컨트랙트의 상태를 업데이트하고, 사용자에게 토큰을 보내고, 그 대가로 토큰을 받아야 합니다.
 
 ```solidity
 if (state.tick != slot0_.tick) {
@@ -259,7 +258,7 @@ if (state.tick != slot0_.tick) {
 }
 ```
 
-First, we set a new price and tick. Since this operation writes to the contract's storage, we want to do it only if the new tick is different, to optimize gas consumption.
+먼저 새로운 가격과 틱을 설정합니다. 이 작업은 컨트랙트 저장소에 쓰기 때문에 가스 소비를 최적화하기 위해 새로운 틱이 다른 경우에만 수행하려고 합니다.
 
 ```solidity
 (amount0, amount1) = zeroForOne
@@ -273,7 +272,7 @@ First, we set a new price and tick. Since this operation writes to the contract'
     );
 ```
 
-Next, we calculate swap amounts based on the swap direction and the amounts calculated during the swap loop.
+다음으로 스왑 방향과 스왑 루프 중에 계산된 양을 기반으로 스왑 양을 계산합니다.
 
 ```solidity
 if (zeroForOne) {
@@ -301,12 +300,12 @@ if (zeroForOne) {
 }
 ```
 
-Next, we exchange tokens with the user, depending on the swap direction. This piece is identical to what we had in Milestone 2, only handling of the other swap direction was added.
+다음으로 스왑 방향에 따라 사용자와 토큰을 교환합니다. 이 부분은 마일스톤 2에 있던 것과 동일하며, 다른 스왑 방향에 대한 처리가 추가되었습니다.
 
-That's it! Swapping is done!
+이것으로 끝입니다! 스왑이 완료되었습니다!
 
-## Testing
+## 테스트
 
-The tests won't change significantly, we only need to pass the `amountSpecified` and `zeroForOne` to the `swap` function. Output amount will change insignificantly though, because it's now calculated in Solidity.
+테스트는 크게 변경되지 않습니다. `amountSpecified`와 `zeroForOne`을 `swap` 함수에 전달하기만 하면 됩니다. 출력량은 이제 Solidity에서 계산되기 때문에 약간 변경될 것입니다.
 
-We can now test swapping in the opposite direction! I'll leave this for you, as homework (just be sure to choose a small input amount so the whole swap can be handled by our single price range). Don't hesitate to peek at [my tests](https://github.com/Jeiwan/uniswapv3-code/blob/milestone_2/test/UniswapV3Pool.t.sol) if this feels difficult!
+이제 반대 방향으로 스왑하는 것을 테스트할 수 있습니다! 숙제로 남겨두겠습니다 (전체 스왑이 단일 가격 범위에서 처리될 수 있도록 작은 입력 양을 선택해야 합니다). 어렵게 느껴진다면 [제 테스트](https://github.com/Jeiwan/uniswapv3-code/blob/milestone_2/test/UniswapV3Pool.t.sol)를 살펴보는 것을 주저하지 마십시오!

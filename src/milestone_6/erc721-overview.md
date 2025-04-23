@@ -1,24 +1,24 @@
-# Overview of ERC721
+# ERC721 개요
 
-Let's begin with an overview of [EIP-721](https://eips.ethereum.org/EIPS/eip-721), the standard that defines NFT contracts.
+NFT 컨트랙트를 정의하는 표준인 [EIP-721](https://eips.ethereum.org/EIPS/eip-721)의 개요부터 살펴보겠습니다.
 
-ERC721 is a variant of ERC20. The main difference between them is that ERC721 tokens are *non-fungible*, that is: one token is not identical to another. To distinguish ERC721 tokens, each of them has a unique ID, which is almost always the counter at which a token was minted. ERC721 tokens also have an extended concept of ownership: the owner of each token is tracked and stored in the contract. This means that only distinct tokens, identified by token IDs, can be transferred (or approved for transfer).
+ERC721은 ERC20의 변형입니다. 그들의 주요 차이점은 ERC721 토큰이 *대체 불가능하다는* 것입니다. 즉, 하나의 토큰이 다른 토큰과 동일하지 않습니다. ERC721 토큰을 구별하기 위해 각 토큰은 고유한 ID를 가지며, 이는 거의 항상 토큰이 발행될 때의 순번입니다. ERC721 토큰은 또한 확장된 소유권 개념을 가지고 있습니다. 각 토큰의 소유자가 추적되어 컨트랙트에 저장됩니다. 이는 토큰 ID로 식별되는 고유한 토큰만 전송(또는 전송 승인)될 수 있음을 의미합니다.
 
-What Uniswap V3 liquidity positions and NFTs have in common is this non-fungibility: NFTs and liquidity positions are not interchangeable and are identified by unique IDs. It's this similarity that will allow us to merge the two concepts.
+Uniswap V3 유동성 포지션과 NFT가 공통적으로 가지고 있는 것은 바로 이 대체 불가능성입니다. NFT와 유동성 포지션은 상호 교환이 불가능하며 고유한 ID로 식별됩니다. 이러한 유사성 덕분에 우리는 두 개념을 병합할 수 있습니다.
 
-The biggest difference between ERC20 and ERC721 is the `tokenURI` function in the latter. NFT tokens, which are implemented as ERC721 smart contracts, have linked assets that are stored externally, not on the blockchain. To link token IDs to images (or sounds, or anything else) stored outside of the blockchain, ERC721 defines the `tokenURI` function. The function is expected to return a link to a JSON file that defines NFT token metadata, e.g.:
+ERC20과 ERC721의 가장 큰 차이점은 후자의 `tokenURI` 함수입니다. ERC721 스마트 컨트랙트로 구현된 NFT 토큰은 블록체인 외부에 외부적으로 저장된 연결된 자산을 가지고 있습니다. 토큰 ID를 블록체인 외부에 저장된 이미지(또는 사운드, 또는 다른 모든 것)에 연결하기 위해 ERC721은 `tokenURI` 함수를 정의합니다. 이 함수는 NFT 토큰 메타데이터를 정의하는 JSON 파일에 대한 링크를 반환하도록 예상됩니다. 예를 들면 다음과 같습니다.
 ```json
 {
-    "name": "Thor's hammer",
-    "description": "Mjölnir, the legendary hammer of the Norse god of thunder.",
+    "name": "토르의 망치",
+    "description": "묠니르, 천둥의 신 노르드 신화의 전설적인 망치.",
     "image": "https://game.example/item-id-8u5h2m.png",
     "strength": 20
 }
 ```
-(This example is taken from the [ERC721 documentation on OpenZeppelin](https://docs.openzeppelin.com/contracts/4.x/erc721))
+(이 예시는 [OpenZeppelin의 ERC721 문서](https://docs.openzeppelin.com/contracts/4.x/erc721)에서 가져왔습니다.)
 
-Such JSON file defines the name of a token, the description of a collection, the link to the image of a token, and the properties of a token.
+이러한 JSON 파일은 토큰의 이름, 컬렉션에 대한 설명, 토큰 이미지에 대한 링크 및 토큰의 속성을 정의합니다.
 
-Alternatively, we may store JSON metadata and token images on-chain. This is very expensive of course (saving data on-chain is the most expensive operation in Ethereum), but we can make it cheaper if we store templates. All tokens within a collection have similar metadata (mostly identical but image links and properties are different for each token) and visuals. For the latter, we can use SVG, which is an HTML-like format, and HTML is a good templating language.
+또는 JSON 메타데이터와 토큰 이미지를 온체인에 저장할 수도 있습니다. 물론 이것은 매우 비쌉니다 (온체인에 데이터를 저장하는 것은 이더리움에서 가장 비싼 작업입니다). 하지만 템플릿을 저장하면 비용을 절감할 수 있습니다. 컬렉션 내의 모든 토큰은 유사한 메타데이터(대부분 동일하지만 이미지 링크와 속성은 각 토큰마다 다름)와 시각적 요소를 가지고 있습니다. 후자의 경우 HTML과 유사한 형식인 SVG를 사용할 수 있으며, HTML은 좋은 템플릿 언어입니다.
 
-When storing JSON metadata and SVG on-chain, the `tokenURI` function, instead of returning a link, would return JSON metadata directly, using the [data URI scheme](https://en.wikipedia.org/wiki/Data_URI_scheme#Syntax) to encode it. SVG images would also be inlined, it won't be necessary to make external requests to download token metadata and images.
+JSON 메타데이터와 SVG를 온체인에 저장할 때 `tokenURI` 함수는 링크를 반환하는 대신 [데이터 URI 스킴](https://en.wikipedia.org/wiki/Data_URI_scheme#Syntax)을 사용하여 JSON 메타데이터를 직접 반환합니다. SVG 이미지도 인라인으로 처리되어 토큰 메타데이터와 이미지를 다운로드하기 위해 외부 요청을 할 필요가 없습니다.

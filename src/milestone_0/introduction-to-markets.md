@@ -1,39 +1,43 @@
-# Introduction to Markets
+# 시장 소개
 
-## How Centralized Exchanges Work
-In this book, we'll build a decentralized exchange (DEX) that will run on Ethereum. There are multiple approaches to how an exchange can be designed. All centralized exchanges have *an order book* at their core. An order book is just a journal that stores all the sell and buy orders that traders want to make. Each order in this book contains a price the order must be executed at and the amount that must be bought or sold.
+## 중앙화 거래소 작동 방식
+이 책에서는 이더리움에서 실행될 탈중앙화 거래소(DEX)를 구축할 것입니다. 거래소를 설계하는 데에는 여러 접근 방식이 있습니다. 모든 중앙화 거래소는 핵심적으로 *호가창(order book)*을 가지고 있습니다. 호가창은 거래자들이 내고자 하는 모든 매도 및 매수 주문을 저장하는 장부입니다. 이 장부의 각 주문에는 주문이 실행되어야 하는 가격과 매수 또는 매도되어야 하는 수량이 포함됩니다.
 
-![Order book example](images/orderbook.png)
 
-For trading to happen, there must exist *liquidity*, which is simply the availability of assets on a market. If you want to buy a wardrobe but no one is selling one, there's no liquidity. If you want to sell a wardrobe but no one wants to buy it, there's liquidity but no buyers. If there's no liquidity, there's nothing to buy or sell.
 
-On centralized exchanges, the order book is where liquidity is accumulated. If someone places a sell order, they provide liquidity to the market. If someone places a buy order, they expect the market to have liquidity, otherwise, no trade is possible.
+![호가창 예시](images/orderbook.png)
 
-When there's no liquidity, but markets are still interested in trades, *market makers* come into play. A market maker is a firm or an individual who provides liquidity to markets, that is someone who has a lot of money and who buys different assets to sell them on exchanges. For this job market makers are paid by exchanges. **Market makers make money by providing liquidity to exchanges**.
+거래가 발생하려면 *유동성(liquidity)*이 존재해야 합니다. 유동성은 단순히 시장에서 자산의 가용성을 의미합니다. 옷장을 사고 싶지만 아무도 팔지 않는다면 유동성이 없는 것입니다. 옷장을 팔고 싶지만 아무도 사고 싶어하지 않는다면 유동성은 있지만 구매자가 없는 것입니다. 유동성이 없다면 사고 팔 것이 없습니다.
 
-## How Decentralized Exchanges Work
+중앙화 거래소에서는 호가창이 유동성이 축적되는 곳입니다. 누군가 매도 주문을 내면 시장에 유동성을 제공하는 것입니다. 누군가 매수 주문을 내면 시장에 유동성이 있을 것으로 기대하며, 그렇지 않으면 거래가 불가능합니다.
 
-Don't be surprised, decentralized exchanges also need liquidity. And they also need someone who provides it to traders of a wide variety of assets. However, this process cannot be handled in a centralized way. **A decentralized solution must be found.** There are multiple decentralized solutions and some of them are implemented differently. Our focus will be on how Uniswap solves this problem.
+유동성이 없지만 시장이 여전히 거래에 관심이 있을 때, *시장 조성자(market maker)*가 등장합니다. 시장 조성자는 시장에 유동성을 제공하는 회사나 개인으로, 돈이 많고 거래소에서 판매하기 위해 다양한 자산을 구매하는 사람입니다. 이러한 역할에 대해 시장 조성자는 거래소로부터 보수를 받습니다. **시장 조성자는 거래소에 유동성을 제공함으로써 수익을 창출합니다**.
 
-## Automated Market Makers
+## 탈중앙화 거래소 작동 방식
 
-[The evolution of on-chain markets](https://bennyattar.substack.com/p/the-evolution-of-amms) brought us to the idea of Automated Market Makers (AMM). As the name implies, this algorithm works exactly like market makers but in an automated way. Moreover, it's decentralized and permissionless, that is:
-- it's not governed by a single entity;
-- all assets are not stored in one place;
-- anyone can use it from anywhere.
+놀라지 마십시오. 탈중앙화 거래소도 유동성이 필요합니다. 그리고 다양한 자산을 거래하는 거래자들에게 유동성을 제공하는 사람이 필요합니다. 그러나 이 프로세스는 중앙 집중식으로 처리할 수 없습니다. **탈중앙화된 해결책이 필요합니다.** 여러 탈중앙화된 해결책이 있으며, 그 중 일부는 다르게 구현됩니다. 우리는 Uniswap이 이 문제를 어떻게 해결하는지에 초점을 맞출 것입니다.
 
-### What Is an AMM?
+## 자동화된 시장 조성자
 
-An AMM is a set of smart contracts that define how liquidity is managed. Each trading pair (e.g. ETH/USDC) is a separate contract that stores both ETH and USDC and that's programmed to mediate trades: exchanging ETH for USDC and vice versa.
+[온체인 시장의 진화](https://bennyattar.substack.com/p/the-evolution-of-amms)는 우리를 자동화된 시장 조성자(Automated Market Makers, AMM)라는 아이디어로 이끌었습니다. 이름에서 알 수 있듯이, 이 알고리즘은 시장 조성자와 똑같이 작동하지만 자동화된 방식으로 작동합니다. 더욱이, 이것은 탈중앙화되고 무허가적입니다. 즉:
+- 단일 주체에 의해 관리되지 않습니다;
+- 모든 자산이 한 곳에 보관되지 않습니다;
+- 누구나 어디에서나 사용할 수 있습니다.
 
-The core idea is **pooling**: each contract is a *pool* that stores liquidity and lets different users (including other smart contracts) trade in a permissionless way. There are two roles, *liquidity providers* and traders, and these roles interact with each other through pools of liquidity, and the way they can interact with pools is programmed and immutable.
+### AMM이란 무엇인가?
 
-![Automated Market Maker simplified](images/amm_simplified.png)
+AMM은 유동성이 관리되는 방식을 정의하는 스마트 컨트랙트 집합입니다. 각 거래 쌍(예: ETH/USDC)은 ETH와 USDC를 모두 저장하고 ETH를 USDC로, 또는 그 반대로 교환하는 거래를 중개하도록 프로그래밍된 별도의 컨트랙트입니다.
 
-What makes this approach different from centralized exchanges is that **the smart contracts are fully automated and not managed by anyone**. There are no managers, admins, privileged users, etc. There are only liquidity providers and traders (they can be the same people), and all the algorithms are programmed, immutable, and public.
+핵심 아이디어는 **풀링(pooling)**입니다. 각 컨트랙트는 유동성을 저장하고 다양한 사용자(다른 스마트 컨트랙트 포함)가 무허가 방식으로 거래할 수 있도록 하는 *풀(pool)*입니다. 여기에는 *유동성 공급자(liquidity provider)*와 거래자라는 두 가지 역할이 있으며, 이 역할들은 유동성 풀을 통해 서로 상호 작용하며, 풀과 상호 작용할 수 있는 방식은 프로그래밍되어 있고 변경 불가능합니다.
 
-Let's now look closer at how Uniswap implements an AMM.
 
-> Please note that I use *pool* and *pair* terms interchangeably throughout the book because a Uniswap pool is a pair of two tokens.
 
-> If you have any questions, feel free to ask them in [the GitHub Discussion of this milestone](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-0-introduction)!
+![자동화된 시장 조성자 간략화](images/amm_simplified.png)
+
+이 접근 방식이 중앙화 거래소와 다른 점은 **스마트 컨트랙트가 완전히 자동화되어 있고 누구에 의해서도 관리되지 않는다**는 것입니다. 관리자, 어드민, 특권 사용자 등이 없습니다. 유동성 공급자와 거래자(동일한 사람일 수 있음)만 있으며, 모든 알고리즘은 프로그래밍되어 있고, 변경 불가능하며, 공개되어 있습니다.
+
+이제 Uniswap이 AMM을 어떻게 구현하는지 자세히 살펴보겠습니다.
+
+> 이 책에서는 Uniswap 풀이 두 토큰 쌍이기 때문에 *풀(pool)*과 *쌍(pair)* 용어를 번갈아 사용합니다.
+
+> 질문이 있으시면 [이정표 0 - 소개에 대한 GitHub 토론](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-0-introduction)에서 자유롭게 질문하십시오!

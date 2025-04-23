@@ -1,25 +1,25 @@
-# Calculating liquidity
+# 유동성 계산
 
-Trading is not possible without liquidity, and to make our first swap we need to put some liquidity into the pool contract.  Here's what we need to know to add liquidity to the pool contract:
+거래는 유동성 없이는 불가능하며, 첫 번째 스왑을 실행하려면 풀 컨트랙트에 유동성을 공급해야 합니다. 풀 컨트랙트에 유동성을 추가하기 위해 알아야 할 사항은 다음과 같습니다.
 
-1. A price range. As a liquidity provider, we want to provide liquidity at a specific price range, and it'll only be used in this range.
-1. Amount of liquidity, which is the amounts of two tokens. We'll need to transfer these amounts to the pool contract.
+1. 가격 범위. 유동성 공급자로서 특정 가격 범위에서 유동성을 제공하고 싶으며, 이 범위 내에서만 사용됩니다.
+2. 유동성 양, 즉 두 토큰의 양. 이 양들을 풀 컨트랙트로 전송해야 합니다.
 
-Here, we're going to calculate these manually, but, in a later chapter, a contract will do this for us. Let's begin with a price range.
+여기서는 이 값들을 수동으로 계산할 것이지만, 다음 장에서는 컨트랙트가 이 작업을 대신 수행할 것입니다. 가격 범위부터 시작해 보겠습니다.
 
-## Price Range Calculation
+## 가격 범위 계산
 
-Recall that, in Uniswap V3, the entire price range is demarcated into ticks: each tick corresponds to a price and has an index. In our first pool implementation, we're going to buy ETH for USDC at the price of \$5000 per 1 ETH. Buying ETH will remove some amount of it from the pool and will push the price slightly above \$5000.  We want to provide liquidity at a range that includes this price. And we want to be sure that the final price will stay **within this range** (we'll do multi-range swaps in a later milestone).
+Uniswap V3에서는 전체 가격 범위가 틱으로 구분되어 있으며, 각 틱은 가격에 해당하고 인덱스를 갖는다는 것을 상기하십시오. 첫 번째 풀 구현에서는 1 ETH당 \$5000의 가격으로 USDC를 구매할 것입니다. ETH를 구매하면 풀에서 일부 양이 제거되고 가격이 \$5000보다 약간 높아질 것입니다. 우리는 이 가격을 포함하는 범위에서 유동성을 제공하고 싶습니다. 그리고 최종 가격이 **이 범위 내**에 유지되도록 확실히 하고 싶습니다 (다중 범위 스왑은 다음 마일스톤에서 다룰 것입니다).
 
-We'll need to find three ticks:
-1. The current tick will correspond to the current price (5000 USDC for 1 ETH).
-1. The lower and upper bounds of the price range we're providing liquidity into. Let the lower price be \$4545 and the upper price be \$5500.
+세 개의 틱을 찾아야 합니다.
+1. 현재 틱은 현재 가격 (1 ETH당 5000 USDC)에 해당합니다.
+2. 우리가 유동성을 제공하는 가격 범위의 하한 및 상한. 하한 가격을 \$4545, 상한 가격을 \$5500으로 설정합니다.
 
-From the theoretical introduction, we know that:
+이론적 소개에서 다음을 알고 있습니다.
 
 $$\sqrt{P} = \sqrt{\frac{y}{x}}$$
 
-Since we've agreed to use ETH as the $x$ reserve and USDC as the $y$ reserve, the prices at each of the ticks are:
+ETH를 $x$ 준비금으로, USDC를 $y$ 준비금으로 사용하기로 했으므로, 각 틱에서의 가격은 다음과 같습니다.
 
 $$\sqrt{P_c} = \sqrt{\frac{5000}{1}} = \sqrt{5000} \approx 70.71$$
 
@@ -27,24 +27,24 @@ $$\sqrt{P_l} = \sqrt{\frac{4545}{1}} \approx 67.42$$
 
 $$\sqrt{P_u} = \sqrt{\frac{5500}{1}} \approx 74.16$$
 
-Where $P_c$ is the current price, $P_l$ is the lower bound of the range, and $P_u$ is the upper bound of the range.
+여기서 $P_c$는 현재 가격, $P_l$는 범위의 하한, $P_u$는 범위의 상한입니다.
 
-Now, we can find corresponding ticks. We know that prices and ticks are connected via this formula:
+이제 해당하는 틱을 찾을 수 있습니다. 가격과 틱은 다음 공식으로 연결되어 있다는 것을 알고 있습니다.
 
 $$\sqrt{P(i)}=1.0001^{\frac{i}{2}}$$
 
-Thus, we can find tick $i$ via:
+따라서 틱 $i$는 다음을 통해 찾을 수 있습니다.
 
 $$i = log_{\sqrt{1.0001}} \sqrt{P(i)}$$
 
-> The square roots in this formula cancel out, but since we're working with $\sqrt{p}$ we need to preserve them.
+> 이 공식에서 제곱근이 상쇄되지만, $\sqrt{p}$로 작업하고 있으므로 유지해야 합니다.
 
-Let's find the ticks:
-1. Current tick: $i_c = log_{\sqrt{1.0001}} 70.71 = 85176$
-1. Lower tick: $i_l = log_{\sqrt{1.0001}} 67.42 = 84222$
-1. Upper tick: $i_u = log_{\sqrt{1.0001}} 74.16 = 86129$
+틱을 찾아봅시다.
+1. 현재 틱: $i_c = log_{\sqrt{1.0001}} 70.71 = 85176$
+2. 하한 틱: $i_l = log_{\sqrt{1.0001}} 67.42 = 84222$
+3. 상한 틱: $i_u = log_{\sqrt{1.0001}} 74.16 = 86129$
 
-> To calculate these, I used Python:
+> 이를 계산하기 위해 Python을 사용했습니다.
 > ```python
 > import math
 >
@@ -55,9 +55,9 @@ Let's find the ticks:
 > > 85176
 >```
 
-That's it for price range calculation!
+가격 범위 계산은 여기까지입니다!
 
-Last thing to note here is that Uniswap uses [Q64.96 number](https://en.wikipedia.org/wiki/Q_%28number_format%29) to store $\sqrt{P}$. This is a fixed-point number that has 64 bits for the integer part and 96 bits for the fractional part. In our above calculations, prices are floating point numbers: `70.71`, `67.42`, and `74.16`. We need to convert them to Q64.96. Luckily, this is simple: we need to multiply the numbers by $2^{96}$ (Q-number is a binary fixed-point number, so we need to multiply our decimals numbers by the base of Q64.96, which is $2^{96}$). We'll get:
+여기서 마지막으로 주목해야 할 점은 Uniswap이 $\sqrt{P}$를 저장하기 위해 [Q64.96 숫자](https://en.wikipedia.org/wiki/Q_%28number_format%29)를 사용한다는 것입니다. 이것은 정수 부분에 64비트, 소수 부분에 96비트를 갖는 고정 소수점 숫자입니다. 위의 계산에서 가격은 부동 소수점 숫자입니다: `70.71`, `67.42`, `74.16`. 우리는 이 값들을 Q64.96으로 변환해야 합니다. 다행히 이것은 간단합니다. 숫자에 $2^{96}$을 곱하면 됩니다 (Q-숫자는 이진 고정 소수점 숫자이므로, 소수 숫자에 Q64.96의 밑수인 $2^{96}$을 곱해야 합니다). 결과는 다음과 같습니다.
 
 $$\sqrt{P_c} = 5602277097478614198912276234240$$
 
@@ -65,7 +65,7 @@ $$\sqrt{P_l} = 5314786713428871004159001755648$$
 
 $$\sqrt{P_u} = 5875717789736564987741329162240$$
 
-> In Python:
+> Python에서:
 > ```python
 > q96 = 2**96
 > def price_to_sqrtp(p):
@@ -74,101 +74,105 @@ $$\sqrt{P_u} = 5875717789736564987741329162240$$
 > price_to_sqrtp(5000)
 > > 5602277097478614198912276234240
 > ```
-> Notice that we're multiplying before converting to an integer. Otherwise, we'll lose precision.
+> 정수로 변환하기 전에 곱하는 것에 유의하십시오. 그렇지 않으면 정밀도를 잃게 됩니다.
 
-## Token Amounts Calculation
+## 토큰 양 계산
 
-The next step is to decide how many tokens we want to deposit into the pool. The answer is as many as we want. The amounts are not strictly defined, we can deposit as much as it is enough to buy a small amount of ETH without making the current price leave the price range we put liquidity into. During development and testing we'll be able to mint any amount of tokens, so getting the amounts we want is not a problem.
+다음 단계는 풀에 예치할 토큰 수를 결정하는 것입니다. 답은 원하는 만큼입니다. 양은 엄격하게 정의되어 있지 않으며, 현재 가격이 유동성을 투입하는 가격 범위를 벗어나지 않도록 소량의 ETH를 구매하기에 충분한 만큼 예치할 수 있습니다. 개발 및 테스트 중에는 원하는 양만큼 토큰을 발행할 수 있으므로, 원하는 양을 얻는 데는 문제가 없습니다.
 
-For our first swap, let's deposit 1 ETH and 5000 USDC.
+첫 번째 스왑을 위해 1 ETH와 5000 USDC를 예치해 보겠습니다.
 
-> Recall that the proportion of current pool reserves tells the current spot price. So if we want to put more tokens into the pool and keep the same price, the amounts must be proportional, e.g.: 2 ETH and 10,000 USDC; 10 ETH and 50,000 USDC, etc.
+> 현재 풀 준비금의 비율이 현재 현물 가격을 알려준다는 것을 상기하십시오. 따라서 풀에 더 많은 토큰을 넣고 동일한 가격을 유지하려면, 양이 비례해야 합니다. 예를 들어, 2 ETH와 10,000 USDC; 10 ETH와 50,000 USDC 등입니다.
 
-## Liquidity Amount Calculation
+## 유동성 양 계산
 
-Next, we need to calculate $L$ based on the amounts we'll deposit. This is a tricky part, so hold tight!
+다음으로, 예치할 양을 기준으로 $L$을 계산해야 합니다. 이것은 까다로운 부분이니 집중하세요!
 
-From the theoretical introduction, you remember that:
+이론적 소개에서 다음을 기억할 것입니다.
 $$L = \sqrt{xy}$$
 
-However, this formula is for the infinite curve 🙂 But we want to put liquidity into a limited price range, which is just a segment of that infinite curve. We need to calculate $L$ specifically for the price range we're going to deposit liquidity into. We need some more advanced calculations.
+하지만 이 공식은 무한 곡선에 대한 것입니다 🙂. 우리는 유한한 가격 범위에 유동성을 넣고 싶으며, 이는 무한 곡선의 한 부분일 뿐입니다. 우리는 유동성을 예치할 가격 범위에 특화된 $L$을 계산해야 합니다. 좀 더 고급 계산이 필요합니다.
 
-To calculate $L$ for a price range, let's look at one interesting fact we have discussed earlier: price ranges can be depleted. It's possible to buy the entire amount of one token from a price range and leave the pool with only the other token.
+가격 범위에 대한 $L$을 계산하기 위해, 앞에서 논의했던 흥미로운 사실 하나를 살펴봅시다. 가격 범위는 소진될 수 있습니다. 가격 범위에서 한 토큰의 전체 양을 구매하고 풀에 다른 토큰만 남길 수 있습니다.
 
-![Range depletion example](images/range_depleted.png)
 
-At the points $a$ and $b$, there's only one token in the range: ETH at the point $a$ and USDC at the point $b$.
 
-That being said, we want to find an $L$ that will allow the price to move to either of the points. We want enough liquidity for the price to reach either of the boundaries of a price range. Thus, we want $L$ to be calculated based on the maximum amounts of $\Delta x$ and $\Delta y$.
+![범위 소진 예시](images/range_depleted.png)
 
-Now, let's see what the prices are at the edges. When ETH is bought from a pool, the price is growing; when USDC is bought, the price is falling. Recall that the price is $\frac{y}{x}$. So, at point $a$, the price is the lowest of the range; at point $b$, the price is the highest.
+점 $a$와 $b$에서 범위 내에 하나의 토큰만 있습니다. 점 $a$에는 ETH, 점 $b$에는 USDC입니다.
 
->In fact, prices are not defined at these points because there's only one reserve in the pool, but what we need to understand here is that the price around the point $b$ is higher than the start price, and the price at the point $a$ is lower than the start price.
+그렇다고 해서, 우리는 가격이 두 점 중 하나에 도달할 수 있도록 하는 $L$을 찾고 싶습니다. 가격이 가격 범위의 경계 중 하나에 도달하기에 충분한 유동성을 원합니다. 따라서, 우리는 $\Delta x$와 $\Delta y$의 최대 양을 기준으로 $L$을 계산하고 싶습니다.
 
-Now, break the curve from the image above into two segments: one to the left of the start point and one to the right of the start point. We're going to calculate **two** $L$'s, one for each of the segments. Why? Because each of the two tokens of a pool contributes to **either of the segments**: the left segment is made entirely of token $x$, and the right segment is made entirely of token $y$. This comes from the fact that, during swapping, the price moves in either direction: it's either growing or falling. For the price to move, only either of the tokens is needed:
-1. when the price is growing, only token $x$ is needed for the swap (we're buying token $x$, so we want to take only token $x$ from the pool);
-1. when the price is falling, only token $y$ is needed for the swap.
+이제, 가장자리의 가격이 어떻게 되는지 봅시다. 풀에서 ETH를 구매하면 가격이 상승합니다. USDC를 구매하면 가격이 하락합니다. 가격은 $\frac{y}{x}$로 계산된다는 것을 상기하십시오. 따라서 점 $a$에서 가격은 범위에서 가장 낮습니다. 점 $b$에서 가격은 가장 높습니다.
 
-Thus, the liquidity in the segment of the curve to the left of the current price consists only of token $x$ and is calculated only from the amount of token $x$ provided. Similarly, the liquidity in the segment of the curve to the right of the current price consists only of token $y$ and is calculated only from the amount of token $y$ provided.
+> 사실, 이 점들에서는 풀에 준비금이 하나밖에 없기 때문에 가격이 정의되지 않지만, 여기서 이해해야 할 것은 점 $b$ 주변의 가격은 시작 가격보다 높고, 점 $a$의 가격은 시작 가격보다 낮다는 것입니다.
 
-![Liquidity on the curve](images/curve_liquidity.png)
+이제 위의 이미지의 곡선을 두 개의 세그먼트로 나눕니다. 시작점의 왼쪽 세그먼트와 시작점의 오른쪽 세그먼트입니다. 우리는 **두 개**의 $L$을 계산할 것입니다. 각 세그먼트당 하나씩입니다. 왜냐하면 풀의 두 토큰 각각이 **두 세그먼트 중 하나**에 기여하기 때문입니다. 왼쪽 세그먼트는 전적으로 토큰 $x$로 구성되고, 오른쪽 세그먼트는 전적으로 토큰 $y$로 구성됩니다. 이는 스왑 중에 가격이 어느 방향으로든 움직인다는 사실에서 비롯됩니다. 가격은 상승하거나 하락합니다. 가격이 움직이려면 토큰 중 하나만 필요합니다.
+1. 가격이 상승할 때, 스왑에는 토큰 $x$만 필요합니다 (토큰 $x$를 구매하고 있으므로, 풀에서 토큰 $x$만 가져오고 싶습니다).
+2. 가격이 하락할 때, 스왑에는 토큰 $y$만 필요합니다.
 
-This is why, when providing liquidity, we calculate two $L$'s and pick one of them. Which one? The smaller one. Why?  Because the bigger one already includes the smaller one! We want the new liquidity to be distributed **evenly** along the curve, thus we want to add the same $L$ to the left and to the right of the current price. If we pick the bigger one, the user would need to provide more liquidity to compensate for the shortage in the smaller one. This is doable, of course, but this would make the smart contract more complex.
+따라서, 현재 가격의 왼쪽에 있는 곡선 세그먼트의 유동성은 토큰 $x$로만 구성되며, 제공된 토큰 $x$의 양으로만 계산됩니다. 마찬가지로, 현재 가격의 오른쪽에 있는 곡선 세그먼트의 유동성은 토큰 $y$로만 구성되며, 제공된 토큰 $y$의 양으로만 계산됩니다.
 
-> What happens with the remainder of the bigger $L$? Well, nothing. After picking the smaller $L$ we can simply convert it to a smaller amount of the token that resulted in the bigger $L$–this will adjust it down. After that, we'll have token amounts that will result in the same $L$.
 
-The final detail I need to focus your attention on here is: **new liquidity must not change the current price**. That is, it must be proportional to the current proportion of the reserves. And this is why the two $L$'s can be different–when the proportion is not preserved. And we pick the small $L$ to reestablish the proportion.
 
-I hope this will make more sense after we implement this in code! Now, let's look at the formulas.
+![곡선 상의 유동성](images/curve_liquidity.png)
 
-Let's recall how $\Delta x$ and $\Delta y$ are calculated:
+이것이 유동성을 제공할 때 두 개의 $L$을 계산하고 그 중 하나를 선택하는 이유입니다. 어떤 것을 선택할까요? 더 작은 것을 선택합니다. 왜냐하면 더 큰 것은 이미 더 작은 것을 포함하기 때문입니다! 우리는 새로운 유동성이 곡선을 따라 **균등하게** 분포되기를 원하므로, 현재 가격의 왼쪽과 오른쪽에 동일한 $L$을 추가하고 싶습니다. 더 큰 것을 선택하면, 사용자는 더 작은 것의 부족분을 보상하기 위해 더 많은 유동성을 제공해야 합니다. 물론 이것은 가능하지만, 스마트 컨트랙트를 더 복잡하게 만들 것입니다.
+
+> 더 큰 $L$의 나머지는 어떻게 될까요? 글쎄요, 아무것도 아닙니다. 더 작은 $L$을 선택한 후에는 단순히 더 큰 $L$을 초래한 토큰의 더 작은 양으로 변환할 수 있습니다. 이렇게 하면 조정됩니다. 그 후, 동일한 $L$을 초래하는 토큰 양을 갖게 됩니다.
+
+여기서 주의해야 할 마지막 세부 사항은 **새로운 유동성은 현재 가격을 변경해서는 안 된다**는 것입니다. 즉, 현재 준비금의 비율에 비례해야 합니다. 그리고 이것이 두 개의 $L$이 다를 수 있는 이유입니다. 비율이 유지되지 않을 때 말이죠. 그리고 우리는 비율을 재확립하기 위해 작은 $L$을 선택합니다.
+
+이것을 코드로 구현한 후에 더 이해가 될 것이라고 바랍니다! 이제 공식들을 살펴봅시다.
+
+$\Delta x$와 $\Delta y$가 어떻게 계산되는지 다시 상기해 봅시다.
 
 $$\Delta x = \Delta \frac{1}{\sqrt{P}} L$$
 $$\Delta y = \Delta \sqrt{P} L$$
 
-We can expand these formulas by replacing the delta P's with actual prices (we know them from the above):
+델타 P를 실제 가격으로 대체하여 이 공식을 확장할 수 있습니다 (위에서 알고 있습니다).
 
 $$\Delta x = (\frac{1}{\sqrt{P_c}} - \frac{1}{\sqrt{P_b}}) L$$
 $$\Delta y = (\sqrt{P_c} - \sqrt{P_a}) L$$
 
-$P_a$ is the price at the point $a$, $P_b$ is the price at the point $b$, and $P_c$ is the current price (see the above chart). Notice that, since the price is calculated as $\frac{y}{x}$ (i.e. it's the price of $x$ in terms of $y$), the price at point $b$ is higher than the current price and the price at $a$. The price at $a$ is the lowest of the three.
+$P_a$는 점 $a$에서의 가격, $P_b$는 점 $b$에서의 가격, $P_c$는 현재 가격입니다 (위의 차트 참조). 가격은 $\frac{y}{x}$로 계산되므로 ($y$ 항의 $x$ 가격), 점 $b$에서의 가격은 현재 가격보다 높고 점 $a$에서의 가격은 더 낮다는 점에 유의하십시오. 점 $a$에서의 가격은 세 가격 중 가장 낮습니다.
 
-Let's find the $L$ from the first formula:
+첫 번째 공식에서 $L$을 찾아봅시다.
 
 $$\Delta x = (\frac{1}{\sqrt{P_c}} - \frac{1}{\sqrt{P_b}}) L$$
 $$\Delta x = \frac{L}{\sqrt{P_c}} - \frac{L}{\sqrt{P_b}}$$
 $$\Delta x = \frac{L(\sqrt{P_b} - \sqrt{P_c})}{\sqrt{P_b} \sqrt{P_c}}$$
 $$L = \Delta x \frac{\sqrt{P_b} \sqrt{P_c}}{\sqrt{P_b} - \sqrt{P_c}}$$
 
-And from the second formula:
+그리고 두 번째 공식에서:
 $$\Delta y = (\sqrt{P_c} - \sqrt{P_a}) L$$
 $$L = \frac{\Delta y}{\sqrt{P_c} - \sqrt{P_a}}$$
 
-So, these are our two $L$'s, one for each of the segments:
+그래서 이것들은 우리 두 개의 $L$이며, 각 세그먼트당 하나씩입니다.
 
 $$L = \Delta x \frac{\sqrt{P_b} \sqrt{P_c}}{\sqrt{P_b} - \sqrt{P_c}}$$
 $$L = \frac{\Delta y}{\sqrt{P_c} - \sqrt{P_a}}$$
 
-Now, let's plug the prices we calculated earlier into them:
+이제, 앞에서 계산한 가격을 대입해 봅시다.
 
 $$L = \Delta x \frac{\sqrt{P_b}\sqrt{P_c}}{\sqrt{P_b}-\sqrt{P_c}} = 1 ETH * \frac{5875... * 5602...}{5875... - 5602...}$$
 
-After converting to Q64.96, we get:
+Q64.96으로 변환한 후, 다음을 얻습니다.
 
 $$L = 1519437308014769733632$$
 
-And for the other $L$:
+그리고 다른 $L$에 대해:
 $$L = \frac{\Delta y}{\sqrt{P_c}-\sqrt{P_a}} = \frac{5000USDC}{5602... - 5314...}$$
 $$L = 1517882343751509868544$$
 
-Of these two, we'll pick the smaller one.
+이 두 개 중에서 더 작은 것을 선택할 것입니다.
 
-> In Python:
+> Python에서:
 > ```python
 > sqrtp_low = price_to_sqrtp(4545)
 > sqrtp_cur = price_to_sqrtp(5000)
 > sqrtp_upp = price_to_sqrtp(5500)
-> 
+>
 > def liquidity0(amount, pa, pb):
 >     if pa > pb:
 >         pa, pb = pb, pa
@@ -182,30 +186,30 @@ Of these two, we'll pick the smaller one.
 > eth = 10**18
 > amount_eth = 1 * eth
 > amount_usdc = 5000 * eth
-> 
+>
 > liq0 = liquidity0(amount_eth, sqrtp_cur, sqrtp_upp)
 > liq1 = liquidity1(amount_usdc, sqrtp_cur, sqrtp_low)
 > liq = int(min(liq0, liq1))
 > > 1517882343751509868544
 > ```
 
-## Token Amounts Calculation, Again
+## 토큰 양 계산, 다시
 
-Since we choose the amounts we're going to deposit, the amounts can be wrong. We cannot deposit any amounts at any price range; the liquidity amount needs to be distributed evenly along the curve of the price range we're depositing into. Thus, even though users choose amounts, the contract needs to re-calculate them, and actual amounts will be slightly different (at least because of rounding).
+우리는 예치할 양을 선택하므로, 양이 틀릴 수 있습니다. 임의의 가격 범위에 임의의 양을 예치할 수 없습니다. 유동성 양은 우리가 예치하는 가격 범위의 곡선을 따라 균등하게 분포되어야 합니다. 따라서, 사용자가 양을 선택하더라도 컨트랙트는 양을 다시 계산해야 하며, 실제 양은 약간 다를 것입니다 (적어도 반올림 때문에).
 
-Luckily, we already know the formulas:
+다행히, 우리는 이미 공식을 알고 있습니다.
 
 $$\Delta x = \frac{L(\sqrt{P_b} - \sqrt{P_c})}{\sqrt{P_b} \sqrt{P_c}}$$
 $$\Delta y = L(\sqrt{P_c} - \sqrt{P_a})$$
 
-> In Python:
+> Python에서:
 > ```python
 > def calc_amount0(liq, pa, pb):
 >     if pa > pb:
 >         pa, pb = pb, pa
 >     return int(liq * q96 * (pb - pa) / pa / pb)
-> 
-> 
+>
+>
 > def calc_amount1(liq, pa, pb):
 >     if pa > pb:
 >         pa, pb = pb, pa
@@ -216,7 +220,7 @@ $$\Delta y = L(\sqrt{P_c} - \sqrt{P_a})$$
 > (amount0, amount1)
 > > (998976618347425408, 5000000000000000000000)
 > ```
-> As you can see, the numbers are close to the amounts we want to provide, but ETH is slightly smaller.
+> 보시다시피, 숫자는 우리가 제공하려는 양에 가깝지만, ETH는 약간 더 작습니다.
 
-> **Hint**: use `cast --from-wei AMOUNT` to convert from wei to ether, e.g.:  
-> `cast --from-wei 998976618347425280` will give you `0.998976618347425280`.
+> **힌트**: `cast --from-wei AMOUNT`를 사용하여 wei에서 ether로 변환하십시오. 예:
+> `cast --from-wei 998976618347425280`은 `0.998976618347425280`을 제공합니다.

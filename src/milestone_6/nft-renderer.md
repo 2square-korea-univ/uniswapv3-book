@@ -1,15 +1,16 @@
-# NFT Renderer
+# NFT 렌더러
 
-Now we need to build an NFT renderer: a library that will handle calls to `tokenURI` in the NFT manager contract. It will render JSON metadata and an SVG for each minted token. As we discussed earlier, we'll use the data URI format, which requires base64 encoding–this means we'll need a base64 encoder in Solidity. But first, let's look at what our tokens will look like.
+이제 NFT 렌더러를 구축해야 합니다. NFT 렌더러는 NFT 관리자 컨트랙트에서 `tokenURI` 호출을 처리하는 라이브러리입니다. 이는 각 발행된 토큰에 대한 JSON 메타데이터와 SVG를 렌더링합니다. 앞서 논의했듯이 데이터 URI 형식을 사용할 것이며, 이는 base64 인코딩이 필요합니다. 즉, 솔리디티에 base64 인코더가 필요합니다. 하지만 먼저 토큰이 어떻게 생겼는지 살펴보겠습니다.
+
+## SVG 템플릿
+
+저는 유니스왑 V3 NFT의 단순화된 변형을 만들었습니다:
 
 
-## SVG Template
 
-I built this simplified variation of the Uniswap V3 NFTs:
+![NFT 토큰용 SVG 템플릿](images/nft_template.png)
 
-![SVG template for NFT tokens](images/nft_template.png)
-
-This is what its code looks like;
+다음은 해당 코드입니다.
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 480">
   <style>
@@ -51,33 +52,37 @@ This is what its code looks like;
 </svg>
 ```
 
-This is a simple SVG template, and we're going to make a Solidity contract that fills the fields in this template and returns it in `tokenURI`. The fields that will be filled uniquely for each token:
-1. the color of the background, which is set in the first two `rect`s; the hue component (330 in the template) will be unique for each token;
-1. the names of the tokens of a pool the position belongs to (WETH/USDC in the template);
-1. the fee of a pool (0.05%);
-1. tick values of the boundaries of the position (123456).
+이것은 간단한 SVG 템플릿이며, 이 템플릿의 필드를 채우고 `tokenURI`로 반환하는 솔리디티 컨트랙트를 만들 것입니다. 각 토큰마다 고유하게 채워질 필드는 다음과 같습니다:
+1. 배경색, 이는 처음 두 개의 `rect`에서 설정됩니다. 템플릿에서 색상 구성 요소(330)는 각 토큰마다 고유합니다.
+2. 포지션이 속한 풀의 토큰 이름 (템플릿의 WETH/USDC).
+3. 풀의 수수료 (0.05%).
+4. 포지션 경계의 틱 값 (123456).
 
-Here are examples of NFTs our contract will be able to produce:
-
-![NFT example 1](images/nft_example_2.png)
-![NFT example 2](images/nft_example_3.png)
+다음은 컨트랙트가 생성할 수 있는 NFT의 예시입니다:
 
 
-## Dependencies
 
-Solidity doesn't provide a native Base64 encoding tool so we'll use a third-party one. Specifically, we'll use [the one from OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Base64.sol).
+![NFT 예시 1](images/nft_example_2.png)
 
-Another tedious thing about Solidity is that it has very poor support for operations with strings. For example, there's no way to convert integers to strings–but we need that to render pool fee and position ticks in the SVG template. We'll use [the Strings library from OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Strings.sol) to do that.
 
-## Format of the Result
+![NFT 예시 2](images/nft_example_3.png)
 
-The data produced by the renderer will have this format:
+
+## 의존성
+
+솔리디티는 기본 Base64 인코딩 도구를 제공하지 않으므로 타사 도구를 사용할 것입니다. 특히, [OpenZeppelin의 도구](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Base64.sol)를 사용할 것입니다.
+
+솔리디티의 또 다른 지루한 점은 문자열 연산에 대한 지원이 매우 부족하다는 것입니다. 예를 들어, 정수를 문자열로 변환할 방법이 없습니다. 하지만 SVG 템플릿에서 풀 수수료와 포지션 틱을 렌더링하려면 필요합니다. 이를 위해 [OpenZeppelin의 Strings 라이브러리](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Strings.sol)를 사용할 것입니다.
+
+## 결과 형식
+
+렌더러가 생성하는 데이터는 다음과 같은 형식을 가집니다:
 
 ```
 data:application/json;base64,BASE64_ENCODED_JSON
 ```
 
-The JSON will look like this:
+JSON은 다음과 같은 형태일 것입니다:
 ```json
 {
   "name": "Uniswap V3 Position",
@@ -86,11 +91,11 @@ The JSON will look like this:
 }
 ```
 
-The image will be the above SVG template filled with position data and encoded in Base64.
+이미지는 위 SVG 템플릿에 포지션 데이터를 채우고 Base64로 인코딩한 것입니다.
 
-## Implementing the Renderer
+## 렌더러 구현
 
-We'll implement the renderer in a separate library contract to not make the NFT manager contract too noisy:
+NFT 관리자 컨트랙트가 너무 복잡해지는 것을 막기 위해 렌더러를 별도의 라이브러리 컨트랙트에 구현할 것입니다:
 
 ```solidity
 library NFTRenderer {
@@ -108,9 +113,9 @@ library NFTRenderer {
 }
 ```
 
-In the `render` function, we'll first render an SVG, then a JSON. To keep the code cleaner, we'll break down each step into smaller steps.
+`render` 함수에서 먼저 SVG를 렌더링한 다음 JSON을 렌더링합니다. 코드를 더 깔끔하게 유지하기 위해 각 단계를 더 작은 단계로 나눌 것입니다.
 
-We begin with fetching token symbols:
+토큰 심볼을 가져오는 것으로 시작합니다:
 ```solidity
 function render(RenderParams memory params) {
     IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
@@ -122,9 +127,9 @@ function render(RenderParams memory params) {
     ...
 ```
 
-### SVG Rendering
+### SVG 렌더링
 
-Then we can render the SVG template:
+그런 다음 SVG 템플릿을 렌더링할 수 있습니다:
 ```solidity
 string memory image = string.concat(
     "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 480'>",
@@ -138,13 +143,13 @@ string memory image = string.concat(
 );
 ```
 
-The template is broken down into multiple steps:
-1. first comes the header, which includes the CSS styles;
-1. then the background is rendered;
-1. then the top position information is rendered (token symbols and fee);
-1. finally, the bottom information is rendered (position ticks).
+템플릿은 여러 단계로 나뉩니다:
+1. 첫 번째는 CSS 스타일을 포함하는 헤더입니다.
+2. 그 다음은 배경이 렌더링됩니다.
+3. 그 다음은 상단 포지션 정보 (토큰 심볼 및 수수료)가 렌더링됩니다.
+4. 마지막으로 하단 정보 (포지션 틱)가 렌더링됩니다.
 
-The background is simply two `rect`s. To render them we need to find the unique hue of this token and then we concatenate all the pieces together:
+배경은 단순히 두 개의 `rect` 요소입니다. 이를 렌더링하려면 이 토큰의 고유한 색조를 찾은 다음 모든 조각들을 함께 연결해야 합니다:
 ```solidity
 function renderBackground(
     address owner,
@@ -165,7 +170,7 @@ function renderBackground(
 }
 ```
 
-The top template renders token symbols and pool fees:
+상단 템플릿은 토큰 심볼과 풀 수수료를 렌더링합니다:
 ```solidity
 function renderTop(
     string memory symbol0,
@@ -187,7 +192,7 @@ function renderTop(
 }
 ```
 
-Fees are rendered as numbers with a fractional part. Since all possible fees are known in advance we don't need to convert integers to fractional numbers and can simply hardcode the values:
+수수료는 소수 부분이 있는 숫자로 렌더링됩니다. 가능한 모든 수수료를 미리 알 수 있으므로 정수를 소수로 변환할 필요 없이 값을 하드코딩할 수 있습니다:
 ```solidity
 function feeToText(uint256 fee)
     internal
@@ -202,7 +207,7 @@ function feeToText(uint256 fee)
 }
 ```
 
-In the bottom part, we render position ticks:
+하단 부분에서는 포지션 틱을 렌더링합니다:
 ```solidity
 function renderBottom(int24 lowerTick, int24 upperTick)
     internal
@@ -222,7 +227,7 @@ function renderBottom(int24 lowerTick, int24 upperTick)
 }
 ```
 
-Since ticks can be positive and negative, we need to render them properly (with or without the minus sign):
+틱은 양수와 음수가 될 수 있으므로 적절하게 렌더링해야 합니다 (마이너스 부호 유무에 따라):
 ```solidity
 function tickToText(int24 tick)
     internal
@@ -238,12 +243,12 @@ function tickToText(int24 tick)
 }
 ```
 
-### JSON Rendering
+### JSON 렌더링
 
-Now, let's return to the `render` function and render the JSON. First, we need to render a token description:
+이제 `render` 함수로 돌아가서 JSON을 렌더링해 보겠습니다. 먼저 토큰 설명을 렌더링해야 합니다:
 ```solidity
 function render(RenderParams memory params) {
-    ... SVG rendering ...
+    ... SVG 렌더링 ...
 
     string memory description = renderDescription(
         symbol0,
@@ -256,7 +261,7 @@ function render(RenderParams memory params) {
     ...
 ```
 
-A token description is a text string that contains all the same information that we render in the token's SVG:
+토큰 설명은 토큰의 SVG에서 렌더링하는 모든 동일한 정보를 포함하는 텍스트 문자열입니다:
 ```solidity
 function renderDescription(
     string memory symbol0,
@@ -279,11 +284,11 @@ function renderDescription(
 }
 ```
 
-We can now assemble the JSON metadata:
+이제 JSON 메타데이터를 조립할 수 있습니다:
 ```solidity
 function render(RenderParams memory params) {
-    string memory image = ...SVG rendering...
-    string memory description = ...description rendering...
+    string memory image = ...SVG 렌더링...
+    string memory description = ...description 렌더링...
 
     string memory json = string.concat(
         '{"name":"Uniswap V3 Position",',
@@ -296,7 +301,7 @@ function render(RenderParams memory params) {
     );
 ```
 
-And, finally, we can return the result:
+마지막으로 결과를 반환할 수 있습니다:
 
 ```solidity
 return
@@ -306,9 +311,9 @@ return
     );
 ```
 
-### Filling the Gap in `tokenURI`
+### `tokenURI`의 빈 공간 채우기
 
-Now we're ready to return to the `tokenURI` function in the NFT manager contract and add the actual rendering:
+이제 NFT 관리자 컨트랙트의 `tokenURI` 함수로 돌아가서 실제 렌더링을 추가할 준비가 되었습니다:
 
 ```solidity
 function tokenURI(uint256 tokenId)
@@ -335,17 +340,17 @@ function tokenURI(uint256 tokenId)
 }
 ```
 
-# Gas Costs
+# 가스 비용
 
-With all its benefits, storing data on-chain has a huge disadvantage: contract deployments become very expensive. When deploying a contract, you pay for the size of the contract, and all the strings and templates increase gas spending significantly. This gets even worse the more advanced your SVGs are: the more there are shapes, CSS styles, animations, etc. the more expensive it gets.
+온체인에 데이터를 저장하는 것은 모든 이점에도 불구하고 큰 단점이 있습니다: 컨트랙트 배포 비용이 매우 비싸집니다. 컨트랙트를 배포할 때 컨트랙트 크기에 대한 비용을 지불하며, 모든 문자열과 템플릿은 가스 소비를 크게 증가시킵니다. SVG가 더 복잡해질수록 상황은 더욱 악화됩니다: 도형, CSS 스타일, 애니메이션 등이 많을수록 비용이 더 많이 듭니다.
 
-Keep in mind that the NFT renderer we implemented above is not gas optimized: you can see the repetitive `rect` and `text` tag strings that can be extracted into internal functions. I sacrificed gas efficiency for the readability of the contract.  In real NFT projects that store all data on-chain, code readability is usually very poor due to heavy gas cost optimizations.
+위에서 구현한 NFT 렌더러는 가스 최적화되지 않았다는 점을 명심하십시오: 반복되는 `rect` 및 `text` 태그 문자열이 내부 함수로 추출될 수 있는 것을 볼 수 있습니다. 저는 컨트랙트의 가독성을 위해 가스 효율성을 희생했습니다. 실제 모든 데이터를 온체인에 저장하는 NFT 프로젝트에서는 가스 비용 최적화 때문에 코드 가독성이 일반적으로 매우 낮습니다.
 
-# Testing
+# 테스팅
 
-The last thing I wanted to focus on here is how we can test the NFT images. It's very important to keep all changes in NFT images tracked to ensure no change breaks rendering. For this, we need a way to test the output of `tokenURI` and its different variations (we can even pre-render the whole collection and have tests to ensure no image gets broken during development).
+여기서 마지막으로 집중하고 싶었던 것은 NFT 이미지를 테스트하는 방법입니다. NFT 이미지의 모든 변경 사항을 추적하여 어떤 변경 사항도 렌더링을 손상시키지 않도록 하는 것이 매우 중요합니다. 이를 위해 `tokenURI`의 출력과 다양한 변형을 테스트하는 방법이 필요합니다 (전체 컬렉션을 미리 렌더링하고 개발 중에 이미지가 손상되지 않도록 테스트할 수도 있습니다).
 
-To test the output of `tokenURI`, I added this custom assertion:
+`tokenURI`의 출력을 테스트하기 위해 다음과 같은 사용자 정의 어설션을 추가했습니다:
 
 ```solidity
 assertTokenURI(
@@ -355,7 +360,7 @@ assertTokenURI(
 );
 ```
 
-The first argument is the actual output and the second argument is the name of the file that stores the expected one. The assertion loads the content of the file and compares it with the actual one:
+첫 번째 인수는 실제 출력이고 두 번째 인수는 예상 출력을 저장하는 파일의 이름입니다. 어설션은 파일의 내용을 로드하고 실제 출력과 비교합니다:
 
 ```solidity
 function assertTokenURI(
@@ -371,13 +376,12 @@ function assertTokenURI(
 }
 ```
 
-We can do this in Solidity thanks to the `vm.readFile()` cheat code provided by the `forge-std` library, which is a helper library that comes with Forge. Not only this is simple and convenient, but this is also secure: we can configure filesystem permissions to allow only permitted file operations. Specifically, to make the above test work, we need to add this
-`fs_permissions` rule to `foundry.toml`:
+Forge와 함께 제공되는 헬퍼 라이브러리인 `forge-std` 라이브러리에서 제공하는 `vm.readFile()` 치트 코드 덕분에 솔리디티에서 이를 수행할 수 있습니다. 이것은 간단하고 편리할 뿐만 아니라 안전하기도 합니다: 허용된 파일 작업만 허용하도록 파일 시스템 권한을 구성할 수 있습니다. 특히, 위의 테스트가 작동하도록 하려면 `foundry.toml`에 다음과 같은 `fs_permissions` 규칙을 추가해야 합니다:
 ```toml
 fs_permissions = [{access='read',path='.'}]
 ```
 
-And this is how you can read the SVG from a `tokenURI` fixture:
+다음은 `tokenURI` 픽스처에서 SVG를 읽는 방법입니다:
 ```shell
 $ cat test/fixtures/tokenuri0 \
     | awk -F ',' '{print $2}' \
@@ -388,4 +392,4 @@ $ cat test/fixtures/tokenuri0 \
     && open nft.svg
 ```
 
-> Ensure you have [jq tool](https://stedolan.github.io/jq/) installed.
+> [jq tool](https://stedolan.github.io/jq/)이 설치되어 있는지 확인하십시오.

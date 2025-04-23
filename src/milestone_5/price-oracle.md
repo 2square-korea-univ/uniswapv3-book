@@ -1,60 +1,59 @@
-# Price Oracle
+## 가격 오라클
 
-The final mechanism we're going to add to our DEX is a *price oracle*. Even though it's not essential to a DEX (some DEXes don't implement a price oracle), it's still an important feature of Uniswap and something interesting to learn about.
+DEX에 마지막으로 추가할 메커니즘은 *가격 오라클*입니다. DEX에 필수적인 기능은 아니지만 (일부 DEX는 가격 오라클을 구현하지 않음), Uniswap의 중요한 기능이며 학습할 가치가 있습니다.
 
-## What is Price Oracle?
+## 가격 오라클이란 무엇인가?
 
-A price oracle is a mechanism that provides asset prices to the blockchain. Since blockchains are isolated ecosystems, there's no direct way of querying external data, e.g. fetching asset prices from centralized exchanges via API. Another, a very hard one, problem is data validity and authenticity: when fetching prices from an exchange, how do you know they're real?  You have to trust the source. But the internet is not often secure and, sometimes, prices can be manipulated, DNS records can be hijacked, API servers can go down, etc. All these difficulties need to be addressed so we can have reliable and correct on-chain prices.
+가격 오라클은 블록체인에 자산 가격을 제공하는 메커니즘입니다. 블록체인은 고립된 생태계이기 때문에 외부 데이터를 직접 쿼리할 방법이 없습니다. 예를 들어 API를 통해 중앙화 거래소에서 자산 가격을 가져오는 것은 불가능합니다. 또 다른 매우 어려운 문제는 데이터 유효성과 진위성입니다. 거래소에서 가격을 가져올 때, 그 가격이 진짜인지 어떻게 알 수 있을까요? 출처를 신뢰해야 합니다. 하지만 인터넷은 종종 안전하지 않으며, 때로는 가격이 조작될 수 있고, DNS 레코드가 탈취될 수 있으며, API 서버가 다운될 수도 있습니다. 신뢰성 있고 정확한 온체인 가격을 확보하기 위해서는 이러한 모든 어려움을 해결해야 합니다.
 
-One of the first working solutions to the above-mentioned problems was [Chainlink](https://chain.link/). Chainlink runs a decentralized network of oracles that fetch asset prices from centralized exchanges via APIs, average them, and provide them on-chain in a tamper-proof way. Chainlink is a set of contracts with one state variable, asset price, that can be read by anyone (any other contract or user) but can be written only by oracles.
+위에서 언급한 문제에 대한 최초의 실용적인 해결책 중 하나는 [Chainlink](https://chain.link/)였습니다. Chainlink는 API를 통해 중앙화 거래소에서 자산 가격을 가져와 평균을 내고, 위변조 방지 방식으로 온체인에 제공하는 탈중앙화 오라클 네트워크를 운영합니다. Chainlink는 누구나 (다른 컨트랙트 또는 사용자) 읽을 수 있지만 오라클만 쓸 수 있는 상태 변수, 즉 자산 가격을 가진 컨트랙트 집합입니다.
 
-This is one way of looking at price oracles. There's another.
+이것이 가격 오라클을 바라보는 한 가지 방식입니다. 다른 방식도 있습니다.
 
-If we have native on-chain exchanges, why would we need to fetch prices from outside? This is how the Uniswap price oracle works. Thanks to arbitraging and high liquidity, asset prices on Uniswap are close to those on centralized exchanges. So, instead of using centralized exchanges as the source of truth for asset prices, we can use Uniswap, and we don't need to solve the problems related to delivering data on-chain (we also don't need to trust data providers).
+기본적인 온체인 거래소가 있다면 왜 외부에서 가격을 가져와야 할까요? 이것이 Uniswap 가격 오라클의 작동 방식입니다. 차익 거래와 높은 유동성 덕분에 Uniswap의 자산 가격은 중앙화 거래소의 가격과 거의 비슷합니다. 따라서 중앙화 거래소를 자산 가격의 진실 공급원으로 사용하는 대신, Uniswap을 사용할 수 있으며, 온체인으로 데이터를 전달하는 것과 관련된 문제를 해결할 필요가 없습니다 (데이터 제공자를 신뢰할 필요도 없습니다).
 
-## How Uniswap Price Oracle Works
+## Uniswap 가격 오라클 작동 방식
 
-Uniswap simply keeps a record of all previous swap prices. That's it. But instead of tracking actual prices, Uniswap tracks the *accumulated price*, which is the sum of prices at each second in the history of a pool contract.
+Uniswap은 단순히 모든 이전 스왑 가격 기록을 보관합니다. 그게 전부입니다. 하지만 실제 가격을 추적하는 대신, Uniswap은 *누적 가격*을 추적합니다. 누적 가격은 풀 컨트랙트의 역사에서 매 초마다의 가격 합계입니다.
 
 $$a_{i} = \sum_{i=1}^t p_{i}$$
 
-This approach allows us to find *time-weighted average price* between two points in time ($t_1$ and $t_2$) by simply getting the accumulated prices at these points ($a_{t_1}$ and $a_{t_2}$), subtracting one from the other, and dividing by the number of seconds between the two points:
+이 접근 방식을 통해 두 시점 ($t_1$과 $t_2$) 사이의 *시간 가중 평균 가격*을 간단히 찾을 수 있습니다. 해당 시점의 누적 가격 ($a_{t_1}$과 $a_{t_2}$)을 가져와서 하나에서 다른 하나를 빼고, 두 시점 사이의 초 단위 시간으로 나누면 됩니다.
 
 $$p_{t_1,t_2} = \frac{a_{t_2} - a_{t_1}}{t_2 - t_1}$$
 
-This is how it worked in Uniswap V2. In V3, it's slightly different. The accumulated price is the current tick (which is $log_{1.0001}$ of the price):
+이것이 Uniswap V2에서 작동하는 방식이었습니다. V3에서는 약간 다릅니다. 누적 가격은 현재 틱입니다 (틱은 가격의 $log_{1.0001}$ 값).
 
 $$a_{i} = \sum_{i=1}^t log_{1.0001}P(i)$$
 
-And instead of averaging prices, *geometric mean* is taken:
+그리고 가격을 평균하는 대신, *기하 평균*이 사용됩니다.
 
 $$ P_{t_1,t_2} = \left( \prod_{i=t_1}^{t_2} P_i \right) ^ \frac{1}{t_2-t_1} $$
 
-To find the time-weighted geometric mean price between two points in time, we take the accumulated values at these time points, subtract one from the other, divide by the number of seconds between the two points, and calculate $1.0001^{x}$:
+두 시점 사이의 시간 가중 기하 평균 가격을 찾으려면, 해당 시점의 누적 값을 가져와서 하나에서 다른 하나를 빼고, 두 시점 사이의 초 단위 시간으로 나누고, $1.0001^{x}$를 계산합니다.
 
 $$ log_{1.0001}{(P_{t_1,t_2})} = \frac{\sum_{i=t_1}^{t_2} log_{1.0001}(P_i)}{t_2-t_1}$$
 $$ = \frac{a_{t_2} - a_{t_1}}{t_2-t_1}$$
 
 $$P_{t_1,t_2} = 1.0001^{\frac{a_{t_2} - a_{t_1}}{t_2-t_1}}$$
 
-Uniswap V2 didn't store historical accumulated prices, which required referring to a third-party blockchain data indexing service to find a historical price when calculating an average one. Uniswap V3, on the other hand, allows to store up to 65,535 historical accumulated prices, which makes it much easier to calculate any historical time-weighted geometric
-price.
+Uniswap V2는 과거 누적 가격을 저장하지 않았기 때문에, 평균 가격을 계산할 때 과거 가격을 찾기 위해 타사 블록체인 데이터 인덱싱 서비스를 참조해야 했습니다. 반면 Uniswap V3는 최대 65,535개의 과거 누적 가격을 저장할 수 있어, 과거 시간 가중 기하 평균 가격을 훨씬 쉽게 계산할 수 있습니다.
 
-## Price Manipulation Mitigation
+## 가격 조작 완화
 
-Another important topic is price manipulation and how it's mitigated in Uniswap.
+또 다른 중요한 주제는 가격 조작과 Uniswap에서 가격 조작을 완화하는 방법입니다.
 
-It's theoretically possible to manipulate a pool's price to your advantage: for example, buy a big amount of tokens to raise its price and get a profit on a third-party DeFi service that uses Uniswap price oracles, then trade the tokens back to the real price. To mitigate such attacks, Uniswap tracks prices **at the end of a block**, *after* the last trade of a block. This removes the possibility of in-block price manipulations.
+이론적으로 풀의 가격을 유리하게 조작하는 것이 가능합니다. 예를 들어, 토큰을 대량으로 구매하여 가격을 올리고 Uniswap 가격 오라클을 사용하는 타사 DeFi 서비스에서 이익을 얻은 다음, 토큰을 다시 실제 가격으로 거래하는 것입니다. 이러한 공격을 완화하기 위해 Uniswap은 블록 **마지막 거래 *후에*** 블록 **끝에서** 가격을 추적합니다. 이는 블록 내 가격 조작 가능성을 제거합니다.
 
-Technically, prices in the Uniswap oracle are updated at the beginning of each block, and each price is calculated before the first swap in a block.
+기술적으로 Uniswap 오라클의 가격은 각 블록 시작 시에 업데이트되며, 각 가격은 블록의 첫 번째 스왑 전에 계산됩니다.
 
-## Price Oracle Implementation
+## 가격 오라클 구현
 
-Alright, let's get to code.
+자, 이제 코드로 넘어가 보겠습니다.
 
-### Observations and Cardinality
+### 관측 및 카디널리티
 
-We'll begin by creating the `Oracle` library contract and the `Observation` structure:
+`Oracle` 라이브러리 컨트랙트와 `Observation` 구조체를 생성하는 것으로 시작하겠습니다.
 
 ```solidity
 // src/lib/Oracle.sol
@@ -68,7 +67,7 @@ library Oracle {
 }
 ```
 
-*An observation* is a slot that stores a recorded price. It stores a price, the timestamp when this price was recorded, and the `initialized` flag that is set to `true` when the observation is activated (not all observations are activated by default). A pool contract can store up to 65,535 observations:
+*관측*은 기록된 가격을 저장하는 슬롯입니다. 관측은 가격, 가격이 기록된 타임스탬프, 그리고 관측이 활성화되었을 때 `true`로 설정되는 `initialized` 플래그를 저장합니다 (모든 관측이 기본적으로 활성화되는 것은 아님). 풀 컨트랙트는 최대 65,535개의 관측을 저장할 수 있습니다.
 
 ```solidity
 // src/UniswapV3Pool.sol
@@ -79,31 +78,31 @@ contract UniswapV3Pool is IUniswapV3Pool {
 }
 ```
 
-However, since storing that many instances of `Observation` requires a lot of gas (someone would have to pay for writing each of them to the contract's storage), a pool by default can store only 1 observation, which gets overwritten each time a new price is recorded. The number of activated observations, the *cardinality* of observations, can be increased at any time by anyone willing to pay for that. To manage cardinality, we need a few extra state variables:
+하지만 이렇게 많은 `Observation` 인스턴스를 저장하려면 많은 가스가 필요하기 때문에 (누군가가 각 인스턴스를 컨트랙트 스토리지에 쓰는 데 비용을 지불해야 함), 풀은 기본적으로 1개의 관측만 저장할 수 있으며, 새 가격이 기록될 때마다 덮어쓰여집니다. 활성화된 관측 수, 즉 관측의 *카디널리티*는 비용을 지불하려는 사람이 언제든지 늘릴 수 있습니다. 카디널리티를 관리하려면 몇 가지 추가 상태 변수가 필요합니다.
 ```solidity
     ...
     struct Slot0 {
-        // Current sqrt(P)
+        // 현재 sqrt(P)
         uint160 sqrtPriceX96;
-        // Current tick
+        // 현재 틱
         int24 tick;
-        // Most recent observation index
+        // 가장 최근 관측 인덱스
         uint16 observationIndex;
-        // Maximum number of observations
+        // 최대 관측 수
         uint16 observationCardinality;
-        // Next maximum number of observations
+        // 다음 최대 관측 수
         uint16 observationCardinalityNext;
     }
     ...
 ```
 
-- `observationIndex` tracks the index of the most recent observation;
-- `observationCardinality` tracks the number of activated observations;
-- `observationCardinalityNext` tracks the next cardinality the array of observations can expand to.
+- `observationIndex`는 가장 최근 관측의 인덱스를 추적합니다.
+- `observationCardinality`는 활성화된 관측 수를 추적합니다.
+- `observationCardinalityNext`는 관측 배열이 확장될 수 있는 다음 카디널리티를 추적합니다.
 
-Observations are stored in a fixed-length array that expands when a new observation is saved and `observationCardinalityNext` is greater than `observationCardinality` (which signals that cardinality can be expanded). If the array cannot be expanded (the next cardinality value equals the current one), the oldest observations get overwritten, i.e. observation is stored at index 0, the next one is stored at index 1, and so on.
+관측은 고정 길이 배열에 저장되며, 새 관측이 저장되고 `observationCardinalityNext`가 `observationCardinality`보다 클 때 확장됩니다 (이는 카디널리티를 확장할 수 있음을 나타냄). 배열을 확장할 수 없는 경우 (다음 카디널리티 값이 현재 값과 같은 경우), 가장 오래된 관측이 덮어쓰여집니다. 즉, 관측은 인덱스 0에 저장되고, 다음 관측은 인덱스 1에 저장되는 식으로 진행됩니다.
 
-When a pool is created, `observationCardinality` and `observationCardinalityNext` are set to 1:
+풀이 생성될 때, `observationCardinality`와 `observationCardinalityNext`는 1로 설정됩니다.
 ```solidity
 // src/UniswapV3Pool.sol
 contract UniswapV3Pool is IUniswapV3Pool {
@@ -146,9 +145,9 @@ library Oracle {
 }
 ```
 
-### Writing Observations
+### 관측 기록
 
-In the `swap` function, when the current price is changed, an observation is written to the observations array:
+`swap` 함수에서 현재 가격이 변경되면 관측이 observations 배열에 기록됩니다.
 
 ```solidity
 // src/UniswapV3Pool.sol
@@ -184,9 +183,9 @@ contract UniswapV3Pool is IUniswapV3Pool {
 }
 ```
 
-Notice that the tick that's observed here is `slot0_.tick` (not `state.tick`), i.e. the price before the swap! It's updated with a new price in the next statement. This is the price manipulation mitigation we discussed earlier: Uniswap tracks prices **before** the first trade in the block and **after** the last trade in the previous block.
+여기서 관측되는 틱은 `slot0_.tick` ( `state.tick` 아님), 즉 스왑 전 가격입니다! 다음 구문에서 새 가격으로 업데이트됩니다. 이것이 앞에서 논의한 가격 조작 완화 방법입니다. Uniswap은 블록의 첫 번째 거래 **전**과 이전 블록의 마지막 거래 **후**의 가격을 추적합니다.
 
-Also notice that each observation is identified by `_blockTimestamp()`, i.e. the current block timestamp. This means that if there's already an observation for the current block, a price is not recorded. If there are no observations for the current block (i.e. this is the first swap in the block), a price is recorded. This is part of the price manipulation mitigation mechanism.
+또한 각 관측은 `_blockTimestamp()`, 즉 현재 블록 타임스탬프로 식별됩니다. 이는 현재 블록에 대한 관측이 이미 있는 경우 가격이 기록되지 않음을 의미합니다. 현재 블록에 대한 관측이 없는 경우 (즉, 블록의 첫 번째 스왑인 경우), 가격이 기록됩니다. 이것은 가격 조작 완화 메커니즘의 일부입니다.
 
 ```solidity
 // src/lib/Oracle.sol
@@ -213,9 +212,9 @@ function write(
 }
 ```
 
-Here we see that an observation is skipped when there's already an observation made at the current block. If there's no such observation though, we're saving a new one and trying to expand the cardinality when possible. The modulo operator (`%`) ensures that the observation index stays within the range $[0, cardinality)$ and resets to 0 when the upper bound is reached.
+여기서 현재 블록에서 이미 관측이 이루어진 경우 관측이 건너뛰는 것을 볼 수 있습니다. 하지만 그러한 관측이 없는 경우, 새 관측을 저장하고 가능한 경우 카디널리티를 확장하려고 시도합니다. 모듈로 연산자 (`%`)는 관측 인덱스가 $[0, cardinality)$ 범위 내에 유지되도록 하고, 상한에 도달하면 0으로 재설정되도록 합니다.
 
-Now, let's look at the `transform` function:
+이제 `transform` 함수를 살펴보겠습니다.
 
 ```solidity
 function transform(
@@ -236,13 +235,13 @@ function transform(
 }
 ```
 
-What we're calculating here is the accumulated price: the current tick gets multiplied by the number of seconds since the last observation and gets added to the last accumulated price.
+여기서 계산하는 것은 누적 가격입니다. 현재 틱에 마지막 관측 이후의 초 수를 곱하고, 마지막 누적 가격에 더합니다.
 
-### Increasing Cardinality
+### 카디널리티 증가
 
-Let's now see how cardinality is expanded.
+이제 카디널리티가 어떻게 확장되는지 살펴보겠습니다.
 
-Anyone at any time can increase the cardinality of observations of a pool and pay for the gas required to do so. For this, we'll add a new public function to the Pool contract:
+누구나 언제든지 풀의 관측 카디널리티를 늘리고, 그렇게 하는 데 필요한 가스 비용을 지불할 수 있습니다. 이를 위해 풀 컨트랙트에 새로운 공개 함수를 추가할 것입니다.
 
 ```solidity
 // src/UniswapV3Pool.sol
@@ -265,7 +264,7 @@ function increaseObservationCardinalityNext(
 }
 ```
 
-And a new function to Oracle:
+그리고 Oracle에 새로운 함수를 추가합니다.
 
 ```solidity
 // src/lib/Oracle.sol
@@ -284,29 +283,33 @@ function grow(
 }
 ```
 
-In the `grow` function, we're allocating new observations by setting the `timestamp` field of each of them to some non-zero value. Notice that `self` is a storage variable, assigning values to its elements will update the array counter and write the values to the contract's storage.
+`grow` 함수에서 각 관측의 `timestamp` 필드를 0이 아닌 값으로 설정하여 새로운 관측을 할당합니다. `self`는 스토리지 변수이며, 요소에 값을 할당하면 배열 카운터가 업데이트되고 값이 컨트랙트 스토리지에 기록됩니다.
 
-### Reading Observations
+### 관측 읽기
 
-We've finally come to the trickiest part of this chapter: reading of observations. Before moving on, let's review how observations are stored to get a better picture.
+드디어 이 장에서 가장 까다로운 부분인 관측 읽기에 도달했습니다. 계속 진행하기 전에 관측이 어떻게 저장되는지 다시 검토하여 더 나은 그림을 그려보겠습니다.
 
-Observations are stored in a fixed-length array that can be expanded:
-
-![Observations array](images/observations.png)
-
-As we noted above, observations are expected to overflow: if a new observation doesn't fit into the array, writing continues starting at index 0, i.e. oldest observations get overwritten:
-
-![Observations wrapping](images/observations_wrapping.png)
-
-There's no guarantee that an observation will be stored for every block because swaps don't happen in every block. Thus, there will be blocks that have no observations recorded, and such periods of missing observations can be long. Of course, we don't want to have gaps in the prices reported by the oracle, and this is why we're using time-weighted average prices (TWAP)–so we could have averaged prices in the periods where there were no observations. TWAP allows us to *interpolate* prices, i.e.  to draw a line between two observations–each point on the line will be a price at a specific timestamp between the two
-observations.
-
-![Interpolated prices](images/interpolated_prices.png)
+관측은 확장 가능한 고정 길이 배열에 저장됩니다.
 
 
-So, reading observations means finding observations by timestamps and interpolating missing observations, taking into consideration that the observations array is allowed to overflow (e.g. the oldest observation can come after the most recent one in the array). Since we're not indexing the observations by timestamps (to save gas), we'll need to use the [binary search algorithm](https://en.wikipedia.org/wiki/Binary_search_algorithm) for efficient search. But not always.
 
-Let's break it down into smaller steps and begin by implementing the `observe` function in `Oracle`:
+![관측 배열](images/observations.png)
+
+위에서 언급했듯이, 관측은 오버플로가 예상됩니다. 새 관측이 배열에 맞지 않으면 인덱스 0부터 시작하여 기록이 계속됩니다. 즉, 가장 오래된 관측이 덮어쓰여집니다.
+
+
+
+![관측 래핑](images/observations_wrapping.png)
+
+스왑이 모든 블록에서 발생하는 것은 아니기 때문에 모든 블록에 대해 관측이 저장된다는 보장은 없습니다. 따라서 관측이 기록되지 않은 블록이 있을 수 있으며, 이러한 관측 누락 기간이 길어질 수 있습니다. 물론 오라클이 보고하는 가격에 간격이 생기는 것을 원하지 않으므로, 시간 가중 평균 가격 (TWAP)을 사용하고 있습니다. TWAP을 사용하면 관측이 없었던 기간의 평균 가격을 가질 수 있습니다. TWAP을 사용하면 가격을 *보간*할 수 있습니다. 즉, 두 관측 사이에 선을 그릴 수 있습니다. 선의 각 점은 두 관측 사이의 특정 타임스탬프에서의 가격이 됩니다.
+
+
+
+![보간된 가격](images/interpolated_prices.png)
+
+따라서 관측을 읽는다는 것은 타임스탬프로 관측을 찾고, 관측 배열이 오버플로될 수 있다는 점을 고려하여 누락된 관측을 보간하는 것을 의미합니다 (예: 가장 오래된 관측이 배열에서 가장 최근 관측보다 뒤에 올 수 있음). 가스를 절약하기 위해 타임스탬프로 관측을 인덱싱하지 않으므로, 효율적인 검색을 위해 [이진 검색 알고리즘](https://en.wikipedia.org/wiki/Binary_search_algorithm)을 사용해야 합니다. 하지만 항상 그런 것은 아닙니다.
+
+더 작은 단계로 나누어 `Oracle`에서 `observe` 함수를 구현하는 것으로 시작하겠습니다.
 
 ```solidity
 function observe(
@@ -332,9 +335,9 @@ function observe(
 }
 ```
 
-The function takes the current block timestamp, the list of time points we want to get prices at (`secondsAgo`), the current tick, the observations index, and the cardinality.
+이 함수는 현재 블록 타임스탬프, 가격을 가져오려는 시점 목록 (`secondsAgo`), 현재 틱, 관측 인덱스 및 카디널리티를 사용합니다.
 
-Moving to the `observeSingle` function:
+`observeSingle` 함수로 넘어가겠습니다.
 
 ```solidity
 function observeSingle(
@@ -354,14 +357,14 @@ function observeSingle(
 }
 ```
 
-When the most recent observation is requested (0 seconds passed), we can return it right away. If it wasn't recorded in the current block, transform it to consider the current block and the current tick.
+가장 최근 관측이 요청되면 (0초 경과), 즉시 반환할 수 있습니다. 현재 블록에 기록되지 않은 경우, 현재 블록과 현재 틱을 고려하도록 변환합니다.
 
-If an older time point is requested, we need to make several checks before switching to the binary search algorithm:
-1. if the requested time point is the last observation, we can return the accumulated price at the latest observation;
-1. if the requested time point is after the last observation, we can call `transform`  to find the accumulated price at this point, knowing the last observed price and the current price;
-1. if the requested time point is before the last observation, we have to use the binary search.
+더 오래된 시점이 요청되면, 이진 검색 알고리즘으로 전환하기 전에 몇 가지 검사를 수행해야 합니다.
+1. 요청된 시점이 마지막 관측인 경우, 최신 관측에서 누적 가격을 반환할 수 있습니다.
+2. 요청된 시점이 마지막 관측 이후인 경우, `transform`을 호출하여 이 시점의 누적 가격을 찾을 수 있습니다. 마지막으로 관측된 가격과 현재 가격을 알고 있습니다.
+3. 요청된 시점이 마지막 관측 이전인 경우, 이진 검색을 사용해야 합니다.
 
-Let's go straight to the third point:
+세 번째 요점으로 바로 넘어가겠습니다.
 ```solidity
 function binarySearch(
     Observation[65535] storage self,
@@ -377,18 +380,18 @@ function binarySearch(
     ...
 ```
 
-The function takes the current block timestamp (`time`), the timestamp of the price point requested (`target`), as well as the current observations index and cardinality. It returns the range between two observations in which the requested time point is located.
+이 함수는 현재 블록 타임스탬프 (`time`), 요청된 가격 시점의 타임스탬프 (`target`), 그리고 현재 관측 인덱스와 카디널리티를 사용합니다. 요청된 시점이 위치한 두 관측 사이의 범위를 반환합니다.
 
-To initialize the binary search algorithm, we set the boundaries:
+이진 검색 알고리즘을 초기화하기 위해, 경계를 설정합니다.
 ```solidity
-uint256 l = (index + 1) % cardinality; // oldest observation
-uint256 r = l + cardinality - 1; // newest observation
+uint256 l = (index + 1) % cardinality; // 가장 오래된 관측
+uint256 r = l + cardinality - 1; // 가장 최신 관측
 uint256 i;
 ```
 
-Recall that the observations array is expected to overflow, that's why we're using the modulo operator here.
+관측 배열은 오버플로가 예상되므로, 여기서 모듈로 연산자를 사용하고 있습니다.
 
-Then we spin up an infinite loop, in which we check the middle point of the range: if it's not initialized (there's no observation), we continue with the next point:
+그런 다음 무한 루프를 시작합니다. 루프에서 범위의 중간 지점을 확인합니다. 중간 지점이 초기화되지 않은 경우 (관측이 없는 경우), 다음 지점으로 계속 진행합니다.
 
 ```solidity
 while (true) {
@@ -404,7 +407,7 @@ while (true) {
     ...
 ```
 
-If the point is initialized, we call it the left boundary of the range we want the requested time point to be included. And we're trying to find the right boundary (`atOrAfter`):
+지점이 초기화된 경우, 요청된 시점이 포함될 범위의 왼쪽 경계라고 부릅니다. 그리고 오른쪽 경계 (`atOrAfter`)를 찾으려고 시도합니다.
 
 ```solidity
     ...
@@ -416,7 +419,7 @@ If the point is initialized, we call it the left boundary of the range we want t
         break;
     ...
 ```
-If we've found the boundaries, we return them. If not, we continue our search:
+경계를 찾았으면 반환합니다. 그렇지 않으면 검색을 계속합니다.
 
 ```solidity
     ...
@@ -425,7 +428,7 @@ If we've found the boundaries, we return them. If not, we continue our search:
 }
 ```
 
-After finding a range of observations the requested time point belongs to, we need to calculate the price at the requested time point:
+요청된 시점이 속하는 관측 범위를 찾은 후, 요청된 시점의 가격을 계산해야 합니다.
 ```solidity
 // function observeSingle() {
     ...
@@ -440,9 +443,9 @@ After finding a range of observations the requested time point belongs to, we ne
     ...
 ```
 
-This is as simple as finding the average rate of change within the range and multiplying it by the number of seconds that have passed between the lower bound of the range and the time point we need. This is the interpolation we discussed earlier.
+이것은 범위 내 평균 변화율을 찾고, 범위의 하한과 필요한 시점 사이에 경과한 초 수를 곱하는 것만큼 간단합니다. 이것이 앞에서 논의한 보간입니다.
 
-The last thing we need to implement here is a public function in the Pool contract that reads and returns observations:
+여기서 마지막으로 구현해야 할 것은 풀 컨트랙트에서 관측을 읽고 반환하는 공개 함수입니다.
 
 ```solidity
 // src/UniswapV3Pool.sol
@@ -462,13 +465,13 @@ function observe(uint32[] calldata secondsAgos)
 }
 ```
 
-### Interpreting Observations
+### 관측 해석
 
-Let's now see how to interpret observations.
+이제 관측을 해석하는 방법을 살펴보겠습니다.
 
-The `observe` function we just added returns an array of accumulated prices, and we want to know how to convert them to actual prices. I'll demonstrate this in a test of the `observe` function.
+방금 추가한 `observe` 함수는 누적 가격 배열을 반환하며, 이를 실제 가격으로 변환하는 방법을 알고 싶습니다. `observe` 함수 테스트에서 이를 시연하겠습니다.
 
-In the test, I ran multiple swaps in different directions and at different blocks:
+테스트에서 여러 방향과 다른 블록에서 여러 스왑을 실행했습니다.
 
 ```solidity
 function testObserve() public {
@@ -486,9 +489,9 @@ function testObserve() public {
     ...
 ```
 
-> `vm.warp` is a cheat code provided by Foundry: it forwards to a block with the specified timestamp. 2, 7, 20 – these are block timestamps.
+> `vm.warp`는 Foundry에서 제공하는 치트 코드입니다. 지정된 타임스탬프가 있는 블록으로 포워딩합니다. 2, 7, 20은 블록 타임스탬프입니다.
 
-The first swap is made at the block with timestamp 2, the second one is made at timestamp 7, and the third one is made at timestamp 20. We can then read the observations:
+첫 번째 스왑은 타임스탬프 2의 블록에서 이루어지고, 두 번째 스왑은 타임스탬프 7에서 이루어지고, 세 번째 스왑은 타임스탬프 20에서 이루어집니다. 그런 다음 관측을 읽을 수 있습니다.
 
 ```solidity
     ...
@@ -506,13 +509,13 @@ The first swap is made at the block with timestamp 2, the second one is made at 
     ...
 ```
 
-1. The earliest observed price is 0, which is the initial observation that's set when the pool is deployed. However, since the cardinality was set to 3 and we made 3 swaps, it was overwritten by the last observation.
-1. During the first swap, tick 85176 was observed, which is the initial price of the pool–recall that the price before a swap is observed. Because the very first observation was overwritten, this is the oldest observation now.
-1. The next returned accumulated price is 170370, which is `85176 + 85194`. The former is the previous accumulator value, the latter is the price after the first swap that was observed during the second swap.
-1. The next returned accumulated price is 511146, which is `(511146 - 170370) / (17 - 13) = 85194`, the accumulated price between the second and the third swap.
-1. Finally, the most recent observation is 1607059, which is `(1607059 - 511146) / (20 - 7) = 84301`, which is ~4581 USDC/ETH, the price after the second swap that was observed during the third swap.
+1. 가장 먼저 관측된 가격은 0입니다. 풀이 배포될 때 설정되는 초기 관측입니다. 하지만 카디널리티가 3으로 설정되고 3번의 스왑을 수행했기 때문에 마지막 관측으로 덮어쓰여졌습니다.
+2. 첫 번째 스왑 중에 틱 85176이 관측되었습니다. 이는 풀의 초기 가격입니다. 스왑 전 가격이 관측된다는 것을 기억하십시오. 가장 첫 번째 관측이 덮어쓰여졌기 때문에, 이것이 현재 가장 오래된 관측입니다.
+3. 다음으로 반환된 누적 가격은 170370입니다. 이는 `85176 + 85194`입니다. 전자는 이전 누적기 값이고, 후자는 두 번째 스왑 중에 관측된 첫 번째 스왑 후의 가격입니다.
+4. 다음으로 반환된 누적 가격은 511146입니다. 이는 `(511146 - 170370) / (17 - 13) = 85194`입니다. 두 번째 스왑과 세 번째 스왑 사이의 누적 가격입니다.
+5. 마지막으로 가장 최근 관측은 1607059입니다. 이는 `(1607059 - 511146) / (20 - 7) = 84301`입니다. 이는 ~4581 USDC/ETH, 즉 세 번째 스왑 중에 관측된 두 번째 스왑 후의 가격입니다.
 
-Here's an example that involves interpolation: the time points requested are not the time points of the swaps:
+다음은 보간이 포함된 예입니다. 요청된 시점은 스왑 시점이 아닙니다.
 
 ```solidity
 secondsAgos = new uint32[](5);
@@ -530,9 +533,9 @@ assertEq(tickCumulatives[3], 340758);
 assertEq(tickCumulatives[4], 85176);
 ```
 
-This results in prices: 4581.03, 4581.03, 4747.6, and 5008.91, which are the average prices within the requested intervals.
+이는 4581.03, 4581.03, 4747.6, 5008.91의 가격으로 이어집니다. 요청된 간격 내 평균 가격입니다.
 
-> Here's how to compute those values in Python:
+> 다음은 Python에서 해당 값을 계산하는 방법입니다.
 > ```python
 > vals = [1607059, 1185554, 764049, 340758, 85176]
 > secs = [0, 5, 10, 15, 18]

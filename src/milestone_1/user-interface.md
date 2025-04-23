@@ -1,47 +1,51 @@
-# User Interface
+# 사용자 인터페이스
 
-Finally, we made it to the final stop of this milestone–building a user interface!
-
-![Interface of the UI app](images/ui.png)
-
-Since building a front-end app is not the main goal of this book, I won't show how to build such an app from scratch.  Instead, I'll show how to use MetaMask to interact with smart contracts.
-
->If you want to experiment with the app and run it locally, you can fund it in the [ui](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_1/ui) folder in the code repo. This is a simple React app, to run it locally set contract addresses in `App.js` and run `yarn start`.
+드디어 이번 마일스톤의 마지막 단계인 사용자 인터페이스 구축에 도달했습니다!
 
 
-## Overview of Tools
 
-### What is MetaMask?
+![UI 앱의 인터페이스](images/ui.png)
 
-MetaMask is an Ethereum wallet implemented as a browser extension. It creates and stores private keys, shows token balances, allows to connect to different networks, and sends and receives ether and tokens–everything a wallet has to do.
+프론트엔드 앱을 구축하는 것은 이 책의 주요 목표가 아니므로, 앱을 처음부터 구축하는 방법은 보여드리지 않겠습니다. 대신, MetaMask를 사용하여 스마트 컨트랙트와 상호 작용하는 방법을 보여드리겠습니다.
 
-Besides that, MetaMask acts as a signer and a provider. As a provider, it connects to an Ethereum node and provides an interface to use its JSON-RPC API. As a signer, it provides an interface for secure transaction signing, thus it can be used to sign any transaction using a private key from the wallet.
+> 앱을 직접 사용해보고 로컬에서 실행하고 싶다면, 코드 저장소의 [ui](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_1/ui) 폴더에서 펀딩할 수 있습니다. 이것은 간단한 React 앱이며, 로컬에서 실행하려면 `App.js`에서 컨트랙트 주소를 설정하고 `yarn start`를 실행하세요.
 
-![How MetaMask works](images/metamask.png)
 
-### Convenience Libraries
+## 도구 개요
 
-MetaMask, however, doesn't provide much functionality: it can only manage accounts and send raw transactions. We need another library that will make interaction with contracts easy. We also want a set of utilities that will make our life easier when handling EVM-specific data (ABI encoding/decoding, big numbers handling, etc.).
+### MetaMask란 무엇인가요?
 
-There are multiple such libraries. The two most popular ones are: [web3.js](https://github.com/ChainSafe/web3.js) and [ethers.js](https://github.com/ethers-io/ethers.js/). Picking either of them is a matter of personal preference. To me, Ethers.js seems to have a cleaner contract interaction interface, so I'll pick it.
+MetaMask는 브라우저 확장 프로그램으로 구현된 이더리움 지갑입니다. 개인 키를 생성 및 저장하고, 토큰 잔액을 표시하며, 다양한 네트워크에 연결하고, 이더와 토큰을 보내고 받을 수 있습니다. 즉, 지갑이 해야 하는 모든 기능을 수행합니다.
 
-## Workflows
+그 외에도 MetaMask는 서명자 및 제공자 역할을 합니다. 제공자로서 이더리움 노드에 연결하고 JSON-RPC API를 사용할 수 있는 인터페이스를 제공합니다. 서명자로서 안전한 트랜잭션 서명을 위한 인터페이스를 제공하므로, 지갑의 개인 키를 사용하여 모든 트랜잭션에 서명하는 데 사용할 수 있습니다.
 
-Let's now see how we can implement interaction scenarios using MetaMask + Ethers.js.
 
-### Connecting to Local Node
 
-To send transactions and fetch blockchain data, MetaMask connects to an Ethereum node. To interact with our contracts, we need to connect to the local Anvil node. To do this, open MetaMask, click on the list of networks, click "Add Network", and add a network with RPC URL `http://localhost:8545`. It'll automatically detect the chain ID (31337 in the case of Anvil).
+![MetaMask 작동 방식](images/metamask.png)
 
-After connecting to the local node, we need to import our private key. In MetaMask, click on the list of addresses, click "Import Account", and paste the private key of the address you picked before deploying the contracts. After that, go to the assets list and import the addresses of the two tokens. Now you should see balances of the tokens in MetaMask.
+### 편의 라이브러리
 
-> MetaMask is still somewhat bugged. One problem I struggled with is that it caches the blockchain state when connected to `localhost`. Because of this, when restarting the node, you might see old token balances and states. To fix this, go to the advanced settings and click "Reset Account". You'll need to do this each time after restarting the node.
+그러나 MetaMask는 많은 기능을 제공하지 않습니다. 계정 관리와 원시 트랜잭션 전송만 가능합니다. 컨트랙트와의 상호 작용을 쉽게 만들어 줄 또 다른 라이브러리가 필요합니다. 또한 EVM 특정 데이터 (ABI 인코딩/디코딩, 큰 숫자 처리 등)를 처리할 때 삶을 더 편하게 만들어 줄 유틸리티 세트도 원합니다.
 
-### Connecting to MetaMask
+이러한 라이브러리는 여러 가지가 있습니다. 가장 인기 있는 두 가지는 [web3.js](https://github.com/ChainSafe/web3.js)와 [ethers.js](https://github.com/ethers-io/ethers.js/)입니다. 둘 중 하나를 선택하는 것은 개인 취향의 문제입니다. 저에게는 Ethers.js가 더 깔끔한 컨트랙트 상호 작용 인터페이스를 가진 것 같아서 이것을 선택하겠습니다.
 
-Not every website is allowed to get access to your address in MetaMask. A website first needs to connect to MetaMask. When a new website is connecting to MetaMask, you'll see a window that asks for permissions.
+## 워크플로우
 
-Here's how to connect to MetaMask from a front-end app:
+이제 MetaMask + Ethers.js를 사용하여 상호 작용 시나리오를 어떻게 구현할 수 있는지 살펴봅시다.
+
+### 로컬 노드에 연결
+
+트랜잭션을 보내고 블록체인 데이터를 가져오려면 MetaMask가 이더리움 노드에 연결해야 합니다. 컨트랙트와 상호 작용하려면 로컬 Anvil 노드에 연결해야 합니다. 이렇게 하려면 MetaMask를 열고 네트워크 목록을 클릭한 다음 "네트워크 추가"를 클릭하고 RPC URL `http://localhost:8545`로 네트워크를 추가하세요. 자동으로 체인 ID (Anvil의 경우 31337)를 감지합니다.
+
+로컬 노드에 연결한 후 개인 키를 가져와야 합니다. MetaMask에서 주소 목록을 클릭하고 "계정 가져오기"를 클릭한 다음 컨트랙트를 배포하기 전에 선택한 주소의 개인 키를 붙여넣으세요. 그런 다음 자산 목록으로 이동하여 두 토큰의 주소를 가져옵니다. 이제 MetaMask에서 토큰 잔액이 표시됩니다.
+
+> MetaMask는 여전히 버그가 좀 있습니다. 제가 겪었던 한 가지 문제는 `localhost`에 연결되었을 때 블록체인 상태를 캐시한다는 것입니다. 이 때문에 노드를 다시 시작할 때 이전 토큰 잔액과 상태가 표시될 수 있습니다. 이를 해결하려면 고급 설정으로 이동하여 "계정 재설정"을 클릭하세요. 노드를 다시 시작할 때마다 이 작업을 수행해야 합니다.
+
+### MetaMask에 연결
+
+모든 웹사이트가 MetaMask에서 주소에 접근할 수 있는 것은 아닙니다. 웹사이트는 먼저 MetaMask에 연결해야 합니다. 새 웹사이트가 MetaMask에 연결하려고 하면 권한을 묻는 창이 표시됩니다.
+
+프론트엔드 앱에서 MetaMask에 연결하는 방법은 다음과 같습니다.
 ```js
 // ui/src/contexts/MetaMask.js
 const connect = () => {
@@ -63,19 +67,21 @@ const connect = () => {
 }
 ```
 
-`window.ethereum` is an object provided by MetaMask, it's the interface to communicate with MetaMask. If it's undefined, MetaMask is not installed. If it's defined, we can send two requests to MetaMask: `eth_requestAccounts` and `eth_chainId`.  In fact, `eth_requestAccounts` connects a website to MetaMask. It queries an address from MetaMask, and MetaMask asks for permission from the user. The user will be able to choose which addresses to give access to.
+`window.ethereum`은 MetaMask에서 제공하는 객체이며, MetaMask와 통신하는 인터페이스입니다. 정의되지 않은 경우 MetaMask가 설치되지 않은 것입니다. 정의된 경우 MetaMask에 두 가지 요청 (`eth_requestAccounts` 및 `eth_chainId`)을 보낼 수 있습니다. 실제로 `eth_requestAccounts`는 웹사이트를 MetaMask에 연결합니다. MetaMask에서 주소를 쿼리하고 MetaMask는 사용자에게 권한을 요청합니다. 사용자는 접근 권한을 부여할 주소를 선택할 수 있습니다.
 
-`eth_chainId` will ask for the chain ID of the node MetaMask is connected to. After obtaining an address and chain ID, it's a good practice to display them in the interface:
+`eth_chainId`는 MetaMask가 연결된 노드의 체인 ID를 요청합니다. 주소와 체인 ID를 얻은 후에는 인터페이스에 표시하는 것이 좋습니다.
 
-![MetaMask is connected](images/ui_metamask_connected.png)
 
-### Providing Liquidity
 
-To provide liquidity into the pool, we need to build a form that asks the user to type the amounts they want to deposit.  After clicking "Submit", the app will build a transaction that calls `mint` in the manager contract and provides the amounts chosen by users. Let's see how to do this.
+![MetaMask가 연결되었습니다.](images/ui_metamask_connected.png)
 
-Ether.js provides the `Contract` interface to interact with contracts. It makes our life much easier, since it takes on the job of encoding function parameters, creating a valid transaction, and handing it over to MetaMask. For us, calling contracts looks like calling asynchronous methods on a JS object.
+### 유동성 공급
 
-Let's see how to create an instance of `Contracts`:
+풀에 유동성을 공급하려면 사용자가 예치하려는 금액을 입력하도록 요청하는 양식을 만들어야 합니다. "제출"을 클릭하면 앱은 관리자 컨트랙트에서 `mint`를 호출하고 사용자가 선택한 금액을 제공하는 트랜잭션을 구축합니다. 이것을 어떻게 하는지 살펴봅시다.
+
+Ether.js는 컨트랙트와 상호 작용하기 위한 `Contract` 인터페이스를 제공합니다. 함수 매개변수를 인코딩하고, 유효한 트랜잭션을 만들고, MetaMask에 전달하는 작업을 수행하므로 삶이 훨씬 쉬워집니다. 저희에게 컨트랙트 호출은 JS 객체에서 비동기 메서드를 호출하는 것처럼 보입니다.
+
+`Contracts` 인스턴스를 만드는 방법을 살펴봅시다.
 
 ```js
 token0 = new ethers.Contract(
@@ -85,9 +91,9 @@ token0 = new ethers.Contract(
 );
 ```
 
-A `Contract` instance is an address and the ABI of the contract deployed at this address. The ABI is needed to interact with the contract. The third parameter is the signer interface provided by MetaMask–it's used by the JS contract instance to sign transactions via MetaMask.
+`Contract` 인스턴스는 주소와 이 주소에 배포된 컨트랙트의 ABI입니다. ABI는 컨트랙트와 상호 작용하는 데 필요합니다. 세 번째 매개변수는 MetaMask에서 제공하는 서명자 인터페이스입니다. JS 컨트랙트 인스턴스에서 MetaMask를 통해 트랜잭션에 서명하는 데 사용됩니다.
 
-Now, let's add a function for adding liquidity to the pool:
+이제 풀에 유동성을 추가하는 함수를 추가해 보겠습니다.
 ```js
 const addLiquidity = (account, { token0, token1, manager }, { managerAddress, poolAddress }) => {
   const amount0 = ethers.utils.parseEther("0.998976618347425280");
@@ -102,9 +108,9 @@ const addLiquidity = (account, { token0, token1, manager }, { managerAddress, po
   ...
 ```
 
-The first thing to do is to prepare the parameters. We use the same values we calculated earlier.
+가장 먼저 해야 할 일은 매개변수를 준비하는 것입니다. 이전과 동일한 값을 사용합니다.
 
-Next, we allow the manager contract to take our tokens. First, we check the current allowances:
+다음으로 관리자 컨트랙트가 토큰을 가져갈 수 있도록 허용합니다. 먼저 현재 허용량을 확인합니다.
 ```js
 Promise.all(
   [
@@ -114,7 +120,7 @@ Promise.all(
 )
 ```
 
-Then, we check if either of them is enough to transfer a corresponding amount of tokens. If not, we're sending an `approve` transaction, which asks the user to approve spending of a specific amount to the manager contract. After ensuring that the user has approved full amounts, we call `manager.mint` to add liquidity:
+그런 다음 둘 중 하나가 해당 양의 토큰을 전송하기에 충분한지 확인합니다. 그렇지 않은 경우 `approve` 트랜잭션을 보내 사용자에게 관리자 컨트랙트에 특정 금액을 지출하도록 승인하도록 요청합니다. 사용자가 전체 금액을 승인했는지 확인한 후 `manager.mint`를 호출하여 유동성을 추가합니다.
 ```js
 .then(([allowance0, allowance1]) => {
   return Promise.resolve()
@@ -133,29 +139,29 @@ Then, we check if either of them is enough to transfer a corresponding amount of
         .then(tx => tx.wait())
     })
     .then(() => {
-      alert('Liquidity added!');
+      alert('유동성이 추가되었습니다!');
     });
 })
 ```
 
-> `lt` is a method of [BigNumber](https://docs.ethers.io/v5/api/utils/bignumber/). Ethers.js uses BigNumber to represent the `uint256` type, for which JavaScript [doesn't have enough precision](https://docs.ethers.io/v5/api/utils/bignumber/#BigNumber--notes-safenumbers). This is one of the reasons why we want a convenient library.
+> `lt`는 [BigNumber](https://docs.ethers.io/v5/api/utils/bignumber/)의 메서드입니다. Ethers.js는 JavaScript가 [정밀도가 충분하지 않기 때문에](https://docs.ethers.io/v5/api/utils/bignumber/#BigNumber--notes-safenumbers) `uint256` 유형을 나타내기 위해 BigNumber를 사용합니다. 이것이 편리한 라이브러리를 원하는 이유 중 하나입니다.
 
-This is pretty much similar to the test contract, besides the allowances part.
+이것은 허용량 부분을 제외하고는 테스트 컨트랙트와 매우 유사합니다.
 
-`token0`, `token1`, and `manager` in the above code are instances of `Contract`. `approve` and `mint` are contract functions, which were generated dynamically from the ABIs we provided when instantiated the contracts. When calling these methods, Ethers.js:
-1. encodes function parameters;
-1. builds a transaction;
-1. passes the transaction to MetaMask and asks to sign it; the user sees a MetaMask window and presses "Confirm";
-1. sends the transaction to the node MetaMask is connected to;
-1. returns a transaction object with full information about the sent transaction.
+위 코드의 `token0`, `token1`, `manager`는 `Contract`의 인스턴스입니다. `approve`와 `mint`는 컨트랙트를 인스턴스화할 때 제공한 ABI에서 동적으로 생성된 컨트랙트 함수입니다. 이러한 메서드를 호출할 때 Ethers.js는 다음을 수행합니다.
+1. 함수 매개변수를 인코딩합니다.
+2. 트랜잭션을 구축합니다.
+3. 트랜잭션을 MetaMask에 전달하고 서명을 요청합니다. 사용자는 MetaMask 창을 보고 "확인"을 누릅니다.
+4. 트랜잭션을 MetaMask가 연결된 노드로 보냅니다.
+5. 전송된 트랜잭션에 대한 모든 정보가 포함된 트랜잭션 객체를 반환합니다.
 
-The transaction object also contains the `wait` function, which we call to wait for a transaction to be mined–this allows us to wait for a transaction to be successfully executed before sending another.
+트랜잭션 객체에는 트랜잭션이 마이닝될 때까지 기다리는 데 사용하는 `wait` 함수도 포함되어 있습니다. 이를 통해 다른 트랜잭션을 보내기 전에 트랜잭션이 성공적으로 실행될 때까지 기다릴 수 있습니다.
 
-> Ethereum requires a strict order of transactions. Remember the nonce? It's an account-wide index of transactions, sent by this account. Every new transaction increases this index, and Ethereum won't mine a transaction until a previous transaction (one with a smaller nonce) is mined.
+> 이더리움은 트랜잭션의 엄격한 순서를 요구합니다. nonce를 기억하십니까? 이것은 이 계정에서 보낸 트랜잭션의 계정 전체 인덱스입니다. 모든 새 트랜잭션은 이 인덱스를 증가시키고, 이더리움은 이전 트랜잭션 (nonce가 더 작은 트랜잭션)이 마이닝될 때까지 트랜잭션을 마이닝하지 않습니다.
 
-### Swapping Tokens
+### 토큰 스왑
 
-To swap tokens, we use the same pattern: get parameters from the user, check allowance, and call `swap` on the manager.
+토큰을 스왑하려면 동일한 패턴을 사용합니다. 사용자로부터 매개변수를 가져오고, 허용량을 확인하고, 관리자에서 `swap`을 호출합니다.
 
 ```js
 const swap = (amountIn, account, { tokenIn, manager, token0, token1 }, { managerAddress, poolAddress }) => {
@@ -175,25 +181,25 @@ const swap = (amountIn, account, { tokenIn, manager, token0, token1 }, { manager
       return manager.swap(poolAddress, extra).then(tx => tx.wait())
     })
     .then(() => {
-      alert('Swap succeeded!');
+      alert('스왑에 성공했습니다!');
     }).catch((err) => {
       console.error(err);
-      alert('Failed!');
+      alert('실패했습니다!');
     });
 }
 ```
 
-The only new thing here is the `ethers.utils.parseEther()` function, which we use to convert numbers to wei, the smallest unit in Ethereum.
+여기서 유일한 새로운 것은 숫자를 wei (이더리움의 최소 단위)로 변환하는 데 사용하는 `ethers.utils.parseEther()` 함수입니다.
 
-### Subscribing to Changes
+### 변경 사항 구독
 
-For a decentralized application, it's important to reflect the current blockchain state. For example, in the case of a decentralized exchange, it's critical to properly calculate swap prices based on current pool reserves; outdated data can cause slippage and make a swap transaction fail.
+탈중앙화 애플리케이션의 경우 현재 블록체인 상태를 반영하는 것이 중요합니다. 예를 들어, 탈중앙화 거래소의 경우 현재 풀 준비금을 기반으로 스왑 가격을 적절하게 계산하는 것이 중요합니다. 오래된 데이터는 슬리피지를 유발하고 스왑 트랜잭션이 실패하게 만들 수 있습니다.
 
-While developing the pool contract, we learned about events, that act as blockchain data indexes: whenever a smart contract state is modified, it's a good practice to emit an event since events are indexed for quick search. What we're going to do now, is to subscribe to contract events to keep our front-end app updated. Let's build an event feed!
+풀 컨트랙트를 개발하는 동안 블록체인 데이터 인덱스 역할을 하는 이벤트에 대해 배웠습니다. 스마트 컨트랙트 상태가 수정될 때마다 이벤트는 빠른 검색을 위해 인덱싱되므로 이벤트를 발생시키는 것이 좋습니다. 지금 하려는 것은 프론트엔드 앱을 최신 상태로 유지하기 위해 컨트랙트 이벤트를 구독하는 것입니다. 이벤트 피드를 구축해 봅시다!
 
-If you checked the ABI file as I recommended earlier, you saw that it also contains the description of events: event name and its fields. Well, [Ether.js parses them](https://docs.ethers.io/v5/api/contract/contract/#Contract--events) and provides an interface to subscribe to new events. Let's see how this works.
+이전에 권장한 대로 ABI 파일을 확인했다면 이벤트 이름과 필드에 대한 이벤트 설명도 보셨을 것입니다. [Ether.js는 이를 파싱하고](https://docs.ethers.io/v5/api/contract/contract/#Contract--events) 새 이벤트를 구독하는 인터페이스를 제공합니다. 이것이 어떻게 작동하는지 살펴봅시다.
 
-To subscribe to events, we'll use the `on(EVENT_NAME, handler)` function. The callback receives all the fields of the event and the event itself as parameters:
+이벤트를 구독하려면 `on(EVENT_NAME, handler)` 함수를 사용합니다. 콜백은 이벤트의 모든 필드와 이벤트 자체를 매개변수로 받습니다.
 ```js
 const subscribeToEvents = (pool, callback) => {
   pool.on("Mint", (sender, owner, tickLower, tickUpper, amount, amount0, amount1, event) => callback(event));
@@ -201,7 +207,7 @@ const subscribeToEvents = (pool, callback) => {
 }
 ```
 
-To filter and fetch previous events, we can use `queryFilter`:
+이전 이벤트를 필터링하고 가져오려면 `queryFilter`를 사용할 수 있습니다.
 ```js
 Promise.all([
   pool.queryFilter("Mint", "earliest", "latest"),
@@ -211,7 +217,7 @@ Promise.all([
 });
 ```
 
-You probably noticed that some event fields are marked as `indexed`–such fields are indexed by Ethereum nodes, which lets search events by specific values in such fields. For example, the `Swap` event has `sender` and `recipient` fields indexed, so we can search by swap sender and recipient. And again, Ethere.js makes this easier:
+일부 이벤트 필드가 `indexed`로 표시된 것을 눈치채셨을 것입니다. 이러한 필드는 이더리움 노드에서 인덱싱되므로 이러한 필드의 특정 값으로 이벤트를 검색할 수 있습니다. 예를 들어, `Swap` 이벤트에는 `sender` 및 `recipient` 필드가 인덱싱되어 있으므로 스왑 보낸 사람 및 받는 사람별로 검색할 수 있습니다. 다시 말하지만, Ethers.js는 이를 더 쉽게 만듭니다.
 ```js
 const swapFilter = pool.filters.Swap(sender, recipient);
 const swaps = await pool.queryFilter(swapFilter, fromBlock, toBlock);
@@ -219,7 +225,7 @@ const swaps = await pool.queryFilter(swapFilter, fromBlock, toBlock);
 
 ---
 
-And that's it! We're done with Milestone 1!
+이것으로 끝입니다! 마일스톤 1을 완료했습니다!
 
 <p style="font-size:3rem; text-align: center">
 🎉🍾🍾🍾🎉

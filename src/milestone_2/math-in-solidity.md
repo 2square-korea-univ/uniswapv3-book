@@ -1,28 +1,27 @@
-# Math in Solidity
+# 솔리디티에서의 수학
 
-Due to Solidity not supporting numbers with the fractional part, math in Solidity is somewhat complicated. Solidity gives us integer and unsigned integer types, which are not enough for more or less complex math calculations.
+솔리디티는 소수 부분을 갖는 숫자를 지원하지 않기 때문에, 솔리디티에서의 수학 연산은 다소 복잡합니다. 솔리디티는 정수와 부호 없는 정수 타입을 제공하지만, 이는 다소 복잡한 수학적 계산에는 충분하지 않습니다.
 
-Another difficulty is gas consumption: the more complex an algorithm, the more gas it consumes. Thus, if we need to have advanced math operations (like `exp`, `ln`, and `sqrt`), we want them to be as gas efficient as possible.
+또 다른 어려움은 가스 소비량입니다. 알고리즘이 복잡할수록 가스 소비량은 늘어납니다. 따라서, 고급 수학 연산 (예: `exp`, `ln`, `sqrt`)이 필요한 경우, 가능한 한 가스 효율적으로 만들고자 합니다.
 
-Another big problem is the possibility of under/overflow. When multiplying `uint256` numbers, there's a risk of an overflow: the resulting number might be so big that it won't fit into 256 bits.
+또 다른 큰 문제는 언더플로우/오버플로우의 가능성입니다. `uint256` 숫자를 곱할 때, 오버플로우의 위험이 있습니다. 결과 숫자가 너무 커서 256비트에 맞지 않을 수 있습니다.
 
-All these difficulties force us to use third-party math libraries that implement advanced math operations and, ideally, optimize their gas consumption. In the case when there's no library for an algorithm we need, we'll have to implement it ourselves, which is a difficult task if we need to implement a unique computation.
+이러한 모든 어려움 때문에 우리는 고급 수학 연산을 구현하고, 이상적으로는 가스 소비를 최적화하는 써드파티 수학 라이브러리를 사용해야 합니다. 필요한 알고리즘에 대한 라이브러리가 없는 경우, 직접 구현해야 하며, 이는 고유한 계산을 구현해야 하는 경우 어려운 작업입니다.
 
-## Re-Using Math Contracts
+## 수학 컨트랙트 재사용
 
-In our Uniswap V3 implementation, we're going to use two third-party math contracts:
-1. [PRBMath](https://github.com/paulrberg/prb-math), which is a great library of advanced fixed-point math algorithms.  We'll use the `mulDiv` function to handle overflows when multiplying and then dividing integer numbers.
-1. [TickMath](https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/TickMath.sol) from the original Uniswap V3 repo. This contract implements two functions, `getSqrtRatioAtTick` and `getTickAtSqrtRatio`, which convert $\sqrt{P}$'s
-to ticks and back.
+Uniswap V3 구현에서, 우리는 두 가지 써드파티 수학 컨트랙트를 사용할 것입니다:
+1. [PRBMath](https://github.com/paulrberg/prb-math): 고급 고정 소수점 수학 알고리즘의 훌륭한 라이브러리입니다. 우리는 정수 숫자를 곱하고 나눌 때 오버플로우를 처리하기 위해 `mulDiv` 함수를 사용할 것입니다.
+2. 오리지널 Uniswap V3 레포의 [TickMath](https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/TickMath.sol) 입니다. 이 컨트랙트는 $\sqrt{P}$를 틱으로, 그리고 틱을 $\sqrt{P}$로 변환하는 두 함수, `getSqrtRatioAtTick` 과 `getTickAtSqrtRatio` 를 구현합니다.
 
-Let's focus on the latter.
+후자에 집중해 봅시다.
 
-In our contracts, we'll need to convert ticks to corresponding $\sqrt{P}$ and back. The formulas are:
+우리 컨트랙트에서, 틱을 해당하는 $\sqrt{P}$ 로, 그리고 그 반대로 변환해야 합니다. 공식은 다음과 같습니다:
 
 $$\sqrt{P(i)} = \sqrt{1.0001^i} = 1.0001^{\frac{i}{2}}$$
 
 $$i = log_{\sqrt{1.0001}}\sqrt{P(i)}$$
 
-These are complex mathematical operations (for Solidity, at least) and they require high precision because we don't want to allow rounding errors when calculating prices. To have better precision and optimization we'll need a unique implementation.
+이것들은 복잡한 수학 연산이며 (적어도 솔리디티에게는), 가격을 계산할 때 반올림 오차를 허용하지 않기 때문에 높은 정밀도가 필요합니다. 더 나은 정밀도와 최적화를 위해 고유한 구현이 필요합니다.
 
-If you look at the original code of [getSqrtRatioAtTick](https://github.com/Uniswap/v3-core/blob/8f3e4645a08850d2335ead3d1a8d0c64fa44f222/contracts/libraries/TickMath.sol#L23-L54) and [getTickAtSqrtRatio](https://github.com/Uniswap/v3-core/blob/8f3e4645a08850d2335ead3d1a8d0c64fa44f222/contracts/libraries/TickMath.sol#L61-L204) you'll see that they're quite complex: there're a lot of magic numbers (like `0xfffcb933bd6fad37aa2d162d1a594001`), multiplication, and bitwise operations. At this point, we're not going to analyze the code or re-implement it since this is a very advanced and somewhat different topic. We'll use the contract as is. And, in a later milestone, we'll break down the computations.
+[getSqrtRatioAtTick](https://github.com/Uniswap/v3-core/blob/8f3e4645a08850d2335ead3d1a8d0c64fa44f222/contracts/libraries/TickMath.sol#L23-L54) 과 [getTickAtSqrtRatio](https://github.com/Uniswap/v3-core/blob/8f3e4645a08850d2335ead3d1a8d0c64fa44f222/contracts/libraries/TickMath.sol#L61-L204) 의 원본 코드를 살펴보면, 그것들이 꽤 복잡하다는 것을 알 수 있습니다. 많은 매직 넘버 (예: `0xfffcb933bd6fad37aa2d162d1a594001`), 곱셈, 그리고 비트 연산이 있습니다. 현재 시점에서, 우리는 코드를 분석하거나 재구현하지 않을 것입니다. 왜냐하면 이것은 매우 고급스럽고 다소 다른 주제이기 때문입니다. 우리는 컨트랙트를 있는 그대로 사용할 것입니다. 그리고, 다음 마일스톤에서, 우리는 계산을 분석할 것입니다.

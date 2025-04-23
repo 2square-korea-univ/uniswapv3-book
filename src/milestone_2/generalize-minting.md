@@ -1,13 +1,12 @@
-# Generalized Minting
+# 일반화된 민팅
 
-Now, we're ready to update the `mint` function so we don't need to hard code values anymore and can calculate them instead.
+이제 `mint` 함수를 업데이트하여 더 이상 값을 하드 코딩할 필요 없이 대신 계산할 수 있습니다.
 
+## 초기화된 틱 인덱싱
 
-## Indexing Initialized Ticks
+`mint` 함수에서 틱에서 사용 가능한 유동성 정보를 저장하기 위해 `TickInfo` 매핑을 업데이트하는 것을 상기해 보세요. 이제 비트맵 인덱스에서 새로 초기화된 틱을 인덱싱해야 합니다. 이 인덱스는 나중에 스왑 중에 다음 초기화된 틱을 찾는 데 사용됩니다.
 
-Recall that, in the `mint` function, we update the TickInfo mapping to store information about available liquidity at ticks.  Now, we also need to index newly initialized ticks in the bitmap index–we'll later use this index to find the next initialized tick during swapping.
-
-First, we need to update the `Tick.update` function:
+먼저 `Tick.update` 함수를 업데이트해야 합니다.
 ```solidity
 // src/lib/Tick.sol
 function update(
@@ -21,9 +20,9 @@ function update(
 }
 ```
 
-It now returns a `flipped` flag, which is set to true when liquidity is added to an empty tick or when entire liquidity is removed from a tick.
+이제 `flipped` 플래그를 반환합니다. 이 플래그는 유동성이 빈 틱에 추가되거나 틱에서 전체 유동성이 제거될 때 true로 설정됩니다.
 
-Then, in the `mint` function, we update the bitmap index:
+그런 다음 `mint` 함수에서 비트맵 인덱스를 업데이트합니다.
 ```solidity
 // src/UniswapV3Pool.sol
 ...
@@ -40,22 +39,22 @@ if (flippedUpper) {
 ...
 ```
 
-> Again, we're setting tick spacing to 1 until we introduce different values in Milestone 4.
+> 다시 말하지만, 마일스톤 4에서 다른 값을 도입할 때까지 틱 간격을 1로 설정합니다.
 
-## Token Amounts Calculation
+## 토큰 수량 계산
 
-The biggest change in the `mint` function is switching to tokens amount calculation. In Milestone 1, we hard-coded these values:
+`mint` 함수에서 가장 큰 변화는 토큰 수량 계산으로 전환하는 것입니다. 마일스톤 1에서는 다음 값을 하드 코딩했습니다.
 ```solidity
     amount0 = 0.998976618347425280 ether;
     amount1 = 5000 ether;
 ```
 
-And now we're going to calculate them in Solidity using formulas from Milestone 1. Let's recall those formulas:
+이제 마일스톤 1의 공식을 사용하여 Solidity에서 계산할 것입니다. 해당 공식을 다시 떠올려 보겠습니다.
 
 $$\Delta x = \frac{L(\sqrt{p(i_u)} - \sqrt{p(i_c)})}{\sqrt{p(i_u)}\sqrt{p(i_c)}}$$
 $$\Delta y = L(\sqrt{p(i_c)} - \sqrt{p(i_l)})$$
 
-$\Delta x$ is the amount of `token0`, or token $x$. Let's implement it in Solidity:
+$\Delta x$는 `token0` 또는 토큰 $x$의 수량입니다. Solidity에서 구현해 보겠습니다.
 ```solidity
 // src/lib/Math.sol
 function calcAmount0Delta(
@@ -79,11 +78,11 @@ function calcAmount0Delta(
 }
 ```
 
-> This function is identical to `calc_amount0` in our Python script.
+> 이 함수는 Python 스크립트의 `calc_amount0`과 동일합니다.
 
-The first step is to sort the prices to ensure we don't underflow when subtracting. Next, we convert `liquidity` to a Q96.64 number by multiplying it by 2**96. Next, according to the formula, we multiply it by the difference of the prices and divide it by the bigger price. Then, we divide by the smaller price. The order of division doesn't matter, but we want to have two divisions because the multiplication of prices can overflow.
+첫 번째 단계는 빼기 시 언더플로우가 발생하지 않도록 가격을 정렬하는 것입니다. 다음으로 `liquidity`를 2**96을 곱하여 Q96.64 숫자로 변환합니다. 다음으로 공식에 따라 가격 차이를 곱하고 더 큰 가격으로 나눕니다. 그런 다음 더 작은 가격으로 나눕니다. 나눗셈 순서는 중요하지 않지만 가격 곱셈이 오버플로우될 수 있으므로 두 번의 나눗셈을 수행하려고 합니다.
 
-We're using `mulDivRoundingUp` to multiply and divide in one operation. This function is based on `mulDiv` from `PRBMath`:
+`mulDivRoundingUp`을 사용하여 곱셈과 나눗셈을 한 번에 수행합니다. 이 함수는 `PRBMath`의 `mulDiv`를 기반으로 합니다.
 ```solidity
 function mulDivRoundingUp(
     uint256 a,
@@ -98,9 +97,9 @@ function mulDivRoundingUp(
 }
 ```
 
-`mulmod` is a Solidity function that multiplies two numbers (`a` and `b`), divides the result by `denominator`, and returns the remainder. If the remainder is positive, we round the result up.
+`mulmod`는 두 숫자(`a`와 `b`)를 곱하고 결과를 `denominator`로 나누고 나머지를 반환하는 Solidity 함수입니다. 나머지가 양수이면 결과를 올림합니다.
 
-Next, $\Delta y$:
+다음은 $\Delta y$입니다.
 ```solidity
 function calcAmount1Delta(
     uint160 sqrtPriceAX96,
@@ -118,11 +117,11 @@ function calcAmount1Delta(
 }
 ```
 
-> This function is identical to `calc_amount1` in our Python script.
+> 이 함수는 Python 스크립트의 `calc_amount1`과 동일합니다.
 
-Again, we're using `mulDivRoundingUp` to avoid overflows during multiplication.
+다시 말하지만, 곱셈 중 오버플로우를 방지하기 위해 `mulDivRoundingUp`을 사용합니다.
 
-And that's it! We can now use the functions to calculate token amounts:
+이제 끝났습니다! 이제 함수를 사용하여 토큰 수량을 계산할 수 있습니다.
 ```solidity
 // src/UniswapV3Pool.sol
 function mint(...) {
@@ -144,4 +143,4 @@ function mint(...) {
 }
 ```
 
-Everything else remains the same. You'll need to update the amounts in the pool tests, they'll be slightly different due to rounding.
+다른 모든 것은 동일하게 유지됩니다. 풀 테스트에서 수량을 업데이트해야 합니다. 반올림 때문에 약간 다를 것입니다.

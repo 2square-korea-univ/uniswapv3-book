@@ -1,16 +1,17 @@
-# Second Swap
+# 두 번째 스왑
 
-Alright, this is where it gets real. So far, our implementation has been looking too synthetic and static. We have calculated and hard-coded all the amounts to make the learning curve less steep, and now we're ready to make it dynamic.  We're going to implement the second swap, which is a swap in the opposite direction: sell ETH to buy USDC. To do this, we're going to improve our smart contracts significantly:
-1. We need to implement math calculations in Solidity. However, since implementing math in Solidity is tricky due to Solidity supporting only integer division, we'll use third-party libraries.
-1. We'll need to let users choose swap direction, and the pool contract will need to support swapping in both directions.  We'll improve the contract and will bring it closer to multi-range swaps, which we'll implement in the next milestone.
-1. Finally, we'll update the UI to support swaps in both directions AND output amount calculation! This will require us to implement another contract, Quoter.
+자, 이제 진짜 시작입니다. 지금까지 구현은 너무 인위적이고 정적이었습니다. 학습 곡선을 완만하게 만들기 위해 모든 금액을 계산하고 하드 코딩했지만, 이제 동적으로 만들 준비가 되었습니다. 두 번째 스왑을 구현할 것입니다. 이는 반대 방향의 스왑, 즉 ETH를 판매하여 USDC를 구매하는 것입니다. 이를 위해 스마트 컨트랙트를 크게 개선할 것입니다.
 
-At the end of this milestone, we'll have an app that works almost like a real DEX!
+1. Solidity에서 수학 연산을 구현해야 합니다. 하지만 Solidity는 정수 나눗셈만 지원하기 때문에 Solidity에서 수학을 구현하는 것은 까다롭기 때문에 써드파티 라이브러리를 사용할 것입니다.
+2. 사용자가 스왑 방향을 선택할 수 있도록 해야 하며, 풀 컨트랙트는 양방향 스왑을 지원해야 합니다. 컨트랙트를 개선하여 다음 단계에서 구현할 다중 범위 스왑에 더 가깝게 만들 것입니다.
+3. 마지막으로 UI를 업데이트하여 양방향 스왑과 출력 금액 계산을 지원해야 합니다! 이를 위해 또 다른 컨트랙트인 Quoter를 구현해야 합니다.
 
-Let's begin!
+이번 마일스톤이 끝나면 실제 DEX와 거의 똑같이 작동하는 앱을 갖게 될 것입니다!
 
-> You'll find the complete code of this chapter in [this Github branch](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_2).
+시작해 봅시다!
+
+> 이 챕터의 전체 코드는 [이 Github 브랜치](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_2)에서 확인할 수 있습니다.
 >
-> This milestone introduces a lot of code changes in existing contracts. [Here you can see all changes since the last milestone](https://github.com/Jeiwan/uniswapv3-code/compare/milestone_1...milestone_2)
+> 이번 마일스톤에서는 기존 컨트랙트에 많은 코드 변경이 있습니다. [여기에서 마지막 마일스톤 이후의 모든 변경 사항을 확인할 수 있습니다](https://github.com/Jeiwan/uniswapv3-code/compare/milestone_1...milestone_2)
 
-> If you have any questions, feel free to ask them in [the GitHub Discussion of this milestone](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-2-second-swap)!
+> 질문이 있으시면 [이 마일스톤의 GitHub Discussion](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-2-second-swap)에서 자유롭게 질문해 주세요!

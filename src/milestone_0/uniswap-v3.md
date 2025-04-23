@@ -1,72 +1,78 @@
-# Introduction to Uniswap V3
+## Uniswap V3 소개
 
-> This chapter retells [the whitepaper of Uniswap V3](https://uniswap.org/whitepaper-v3.pdf). Again, it's totally ok if you don't understand all the concepts. They will be clearer when converted to code.
+> 이 장에서는 [Uniswap V3 백서](https://uniswap.org/whitepaper-v3.pdf)를 다시 설명합니다. 모든 개념을 이해하지 못해도 괜찮습니다. 코드로 변환될 때 더 명확해질 것입니다.
 
-To better understand the innovations Uniswap V3 brings, let's first look at the imperfections of Uniswap V2.
+Uniswap V3가 가져온 혁신을 더 잘 이해하기 위해 먼저 Uniswap V2의 불완전성을 살펴보겠습니다.
 
-Uniswap V2 is a general exchange that implements one AMM algorithm. However, not all trading pairs are equal.  Pairs can be grouped by price volatility:
+Uniswap V2는 단일 AMM 알고리즘을 구현하는 일반적인 거래소입니다. 그러나 모든 거래 쌍이 동일한 것은 아닙니다. 쌍은 가격 변동성에 따라 그룹화할 수 있습니다.
 
-1. Tokens with medium and high price volatility. This group includes most tokens since most tokens don't have their prices pegged to something and are subject to market fluctuations.
-1. Tokens with low volatility. This group includes pegged tokens, mainly stablecoins: USDC/USDT, USDC/DAI, USDT/DAI, etc.  Also: ETH/stETH, ETH/rETH (variants of wrapped ETH).
+1. 중간 및 높은 가격 변동성을 가진 토큰. 이 그룹은 대부분의 토큰을 포함합니다. 왜냐하면 대부분의 토큰은 가격이 고정되어 있지 않고 시장 변동에 영향을 받기 때문입니다.
+2. 낮은 변동성을 가진 토큰. 이 그룹에는 페깅된 토큰, 주로 스테이블 코인이 포함됩니다. USDC/USDT, USDC/DAI, USDT/DAI 등입니다. 또한 ETH/stETH, ETH/rETH (랩핑된 ETH의 변형)도 포함됩니다.
 
-These groups require different, let's call them, pool configurations. The main difference is that pegged tokens require high liquidity to reduce the demand effect (we learned about it in the previous chapter) on big trades. The prices of USDC and USDT must stay close to 1, no matter how big the number of tokens we want to buy and sell. Since Uniswap V2's general AMM algorithm is not very well suited for stablecoin trading, alternative AMMs (mainly [Curve](https://curve.fi)) were more popular for stablecoin trading.
+이러한 그룹은 서로 다른, 소위 말하는 풀 구성을 필요로 합니다. 주요 차이점은 페깅된 토큰은 큰 거래에서 수요 효과(이전 장에서 배움)를 줄이기 위해 높은 유동성이 필요하다는 것입니다. USDC와 USDT의 가격은 구매 및 판매하려는 토큰 수에 관계없이 1에 가까워야 합니다. Uniswap V2의 일반적인 AMM 알고리즘은 스테이블 코인 거래에 적합하지 않기 때문에 대체 AMM (주로 [Curve](https://curve.fi))이 스테이블 코인 거래에 더 많이 사용되었습니다.
 
-What caused this problem is that liquidity in Uniswap V2 pools is distributed infinitely–pool liquidity allows trades at any price, from 0 to infinity:
+이 문제의 원인은 Uniswap V2 풀의 유동성이 무한히 분산되어 있다는 것입니다. 풀 유동성은 0에서 무한대까지 모든 가격에서 거래를 허용합니다.
 
-![The curve is infinite](images/curve_infinite.png)
 
-This might not seem like a bad thing, but this makes capital inefficient. Historical prices of an asset stay within some defined range, whether it's narrow or wide. For example, the historical price range of ETH is from $0.75 to $4,800 (according to [CoinMarketCap](https://coinmarketcap.com/currencies/ethereum/)). Today (June 2022, 1 ETH costs \$1,800), no one would buy 1 ether at \$5000, so it makes no sense to provide liquidity at this price. Thus, it doesn't make sense to provide liquidity in a price range that's far away from the current price or that will never be reached.
 
-> However, we all believe in ETH reaching \$10,000 one day.
+![곡선은 무한합니다](images/curve_infinite.png)
 
-## Concentrated Liquidity
+이것이 나쁜 것처럼 보이지 않을 수도 있지만, 자본 비효율성을 야기합니다. 자산의 과거 가격은 좁든 넓든 정의된 범위 내에 머무릅니다. 예를 들어, ETH의 과거 가격 범위는 $0.75에서 $4,800입니다([CoinMarketCap](https://coinmarketcap.com/currencies/ethereum/) 기준). 오늘(2022년 6월, 1 ETH는 \$1,800), 아무도 \$5000에 1 이더를 사지 않을 것이므로 이 가격에서 유동성을 제공하는 것은 의미가 없습니다. 따라서 현재 가격에서 멀리 떨어져 있거나 결코 도달하지 않을 가격 범위에서 유동성을 제공하는 것은 의미가 없습니다.
 
-Uniswap V3 introduces *concentrated liquidity*: liquidity providers can now choose the price range they want to provide liquidity into. This improves capital efficiency by allowing to put more liquidity into a narrow price range, which makes Uniswap more diverse: it can now have pools configured for pairs with different volatility. This is how V3 improves V2.
+> 하지만, 우리는 모두 ETH가 언젠가 \$10,000에 도달할 것이라고 믿습니다.
 
-In a nutshell, a Uniswap V3 pair is many small Uniswap V2 pairs. The main difference between V2 and V3 is that, in V3, there are **many price ranges** in one pair. And each of these shorter price ranges has **finite reserves**. The entire price range from 0 to infinite is split into shorter price ranges, with each of them having its own amount of liquidity. But, what's crucial is that within that shorter price range, **it works exactly as Uniswap V2**. This is why I say that a V3 pair is many small V2 pairs.
+## 집중된 유동성
 
-Now, let's try to visualize it. What we're saying is that we don't want the curve to be infinite. We cut it at the points $a$ and $b$ and say that these are the boundaries of the curve. Moreover, we shift the curve so the boundaries lay on the axes. This is what we get:
+Uniswap V3는 *집중된 유동성*을 도입했습니다. 유동성 공급자는 이제 유동성을 제공하려는 가격 범위를 선택할 수 있습니다. 이는 좁은 가격 범위에 더 많은 유동성을 투입할 수 있도록 하여 자본 효율성을 향상시키고, Uniswap을 더욱 다양하게 만듭니다. 이제 다양한 변동성을 가진 쌍에 대해 풀을 구성할 수 있습니다. 이것이 V3가 V2를 개선하는 방식입니다.
 
-![Uniswap V3 price range](images/curve_finite.png)
+간단히 말해서, Uniswap V3 쌍은 여러 개의 작은 Uniswap V2 쌍입니다. V2와 V3의 주요 차이점은 V3에서는 하나의 쌍에 **많은 가격 범위**가 있다는 것입니다. 그리고 이러한 각 짧은 가격 범위는 **유한한 준비금**을 가지고 있습니다. 0에서 무한대까지의 전체 가격 범위는 더 짧은 가격 범위로 분할되며, 각 범위는 자체 유동성 양을 갖습니다. 하지만 중요한 것은 그 짧은 가격 범위 내에서는 **Uniswap V2와 정확히 동일하게 작동**한다는 것입니다. 이것이 제가 V3 쌍이 여러 개의 작은 V2 쌍이라고 말하는 이유입니다.
 
-> It looks lonely, doesn't it? This is why there are many price ranges in Uniswap V3–so they don't feel lonely 🙂
+이제 시각화해 보겠습니다. 우리가 말하는 것은 곡선이 무한하지 않기를 바란다는 것입니다. 우리는 곡선을 점 $a$와 $b$에서 자르고 이들이 곡선의 경계라고 말합니다. 또한 경계가 축에 놓이도록 곡선을 이동합니다. 이것이 우리가 얻는 것입니다.
 
-As we saw in the previous chapter, buying or selling tokens moves the price along the curve. A price range limits the movement of the price. When the price moves to either of the points, the pool becomes **depleted**: one of the token reserves will be 0, and buying this token won't be possible.
 
-On the chart above, let's assume that the start price is at the middle of the curve. To get to the point $a$, we need to buy all available $y$ and maximize $x$ in the range; to get to the point $b$, we need to buy all available $x$ and maximize $y$ in the range. At these points, there's only one token in the range!
 
-> Fun fact: this allows using Uniswap V3 price ranges as limit orders!
+![Uniswap V3 가격 범위](images/curve_finite.png)
 
-What happens when the current price range gets depleted during a trade? The price slips into the next price range. If the next price range doesn't exist, the trade ends up partially fulfilled-we'll see how this works later in the book.
+> 외로워 보이지 않나요? 이것이 Uniswap V3에 많은 가격 범위가 있는 이유입니다. 외롭지 않도록요 🙂
 
-This is how liquidity is spread in [the USDC/ETH pool in production](https://info.uniswap.org/#/pools/0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8):
+이전 장에서 보았듯이 토큰을 사고파는 것은 가격을 곡선을 따라 이동시킵니다. 가격 범위는 가격 이동을 제한합니다. 가격이 어느 한 지점으로 이동하면 풀은 **고갈**됩니다. 토큰 준비금 중 하나가 0이 되고, 이 토큰을 구매하는 것은 불가능해집니다.
 
-![Liquidity in the real USDC/ETH pool](images/usdceth_liquidity.png)
+위 차트에서 시작 가격이 곡선의 중간에 있다고 가정해 보겠습니다. 점 $a$에 도달하려면 사용 가능한 모든 $y$를 구매하고 범위 내에서 $x$를 최대화해야 합니다. 점 $b$에 도달하려면 사용 가능한 모든 $x$를 구매하고 범위 내에서 $y$를 최대화해야 합니다. 이러한 지점에서는 범위 내에 토큰이 하나만 있습니다!
 
-You can see that there's a lot of liquidity around the current price but the further away from it the less liquidity there is–this is because liquidity providers strive to have higher efficiency of their capital. Also, the whole range is not infinite, its upper boundary is shown in the image.
+> 재미있는 사실: 이것은 Uniswap V3 가격 범위를 지정가 주문으로 사용할 수 있게 합니다!
 
-## The Mathematics of Uniswap V3
+거래 중에 현재 가격 범위가 고갈되면 어떻게 될까요? 가격은 다음 가격 범위로 미끄러집니다. 다음 가격 범위가 없으면 거래는 부분적으로만 완료됩니다. 이 작동 방식은 책의 뒷부분에서 살펴보겠습니다.
 
-Mathematically, Uniswap V3 is based on V2: it uses the same formulas, but they're... let's call it *augmented*.
+다음은 [실제 USDC/ETH 풀](https://info.uniswap.org/#/pools/0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8)에서 유동성이 분산되는 방식입니다.
 
-To handle transitioning between price ranges, simplify liquidity management, and avoid rounding errors, Uniswap V3 uses these new concepts:
+
+
+![실제 USDC/ETH 풀의 유동성](images/usdceth_liquidity.png)
+
+현재 가격 주변에 많은 유동성이 있지만, 가격에서 멀어질수록 유동성이 줄어드는 것을 볼 수 있습니다. 이는 유동성 공급자가 자본 효율성을 높이기 위해 노력하기 때문입니다. 또한 전체 범위가 무한하지 않고, 상한선이 이미지에 표시됩니다.
+
+## Uniswap V3의 수학
+
+수학적으로 Uniswap V3는 V2를 기반으로 합니다. 동일한 공식을 사용하지만... *확장*되었다고 부르겠습니다.
+
+가격 범위 간 전환을 처리하고, 유동성 관리를 단순화하고, 반올림 오류를 피하기 위해 Uniswap V3는 다음과 같은 새로운 개념을 사용합니다.
 
 $$L = \sqrt{xy}$$
 
 $$\sqrt{P} = \sqrt{\frac{y}{x}}$$
 
-$L$ is *the amount of liquidity*. Liquidity in a pool is the combination of token reserves (that is, two numbers). We know that their product is $k$, and we can use this to derive the measure of liquidity, which is $\sqrt{xy}$–a number that, when multiplied by itself, equals $k$. $L$ is the geometric mean of $x$ and $y$.
+$L$은 *유동성 양*입니다. 풀의 유동성은 토큰 준비금의 조합(즉, 두 숫자)입니다. 우리는 그들의 곱이 $k$라는 것을 알고 있으며, 이것을 사용하여 유동성 측정을 유도할 수 있습니다. 그것은 $\sqrt{xy}$입니다. 제곱하면 $k$와 같아지는 숫자입니다. $L$은 $x$와 $y$의 기하 평균입니다.
 
-$y/x$ is the price of token 0 in terms of 1. Since token prices in a pool are reciprocals of each other, we can use only one of them in calculations (and by convention Uniswap V3 uses $y/x$). The price of token 1 in terms of token 0 is simply $\frac{1}{y/x}=\frac{x}{y}$. Similarly, $\frac{1}{\sqrt{P}} = \frac{1}{\sqrt{y/x}} = \sqrt{\frac{x}{y}}$.
+$y/x$는 토큰 1에 대한 토큰 0의 가격입니다. 풀의 토큰 가격은 서로 역수이므로 계산에 하나만 사용할 수 있습니다(그리고 관례상 Uniswap V3는 $y/x$를 사용합니다). 토큰 0에 대한 토큰 1의 가격은 단순히 $\frac{1}{y/x}=\frac{x}{y}$입니다. 마찬가지로, $\frac{1}{\sqrt{P}} = \frac{1}{\sqrt{y/x}} = \sqrt{\frac{x}{y}}$입니다.
 
-Why using $\sqrt{p}$ instead of $p$? There are two reasons:
+$p$ 대신 $\sqrt{p}$를 사용하는 이유는 두 가지입니다.
 
-1. Square root calculation is not precise and causes rounding errors. Thus, it's easier to store the square root without calculating it in the contracts (we will not store $x$ and $y$ in the contracts).
-1. $\sqrt{P}$ has an interesting connection to $L$: $L$ is also the relation between the change in output amount and the change in $\sqrt{P}$.
+1. 제곱근 계산은 정확하지 않고 반올림 오류를 유발합니다. 따라서 계약에서 계산하지 않고 제곱근을 저장하는 것이 더 쉽습니다(계약에 $x$와 $y$를 저장하지 않을 것입니다).
+2. $\sqrt{P}$는 $L$과 흥미로운 관계를 가지고 있습니다. $L$은 출력량 변화와 $\sqrt{P}$ 변화 사이의 관계이기도 합니다.
 
     $$L = \frac{\Delta y}{\Delta\sqrt{P}}$$
 
-> Proof:
+> 증명:
 $$L = \frac{\Delta y}{\Delta\sqrt{P}}$$
 $$\sqrt{xy} = \frac{y_1 - y_0}{\sqrt{P_1} - \sqrt{P_0}}$$
 $$\sqrt{xy} (\sqrt{P_1} - \sqrt{P_0}) = y_1 - y_0$$
@@ -76,44 +82,46 @@ $$\sqrt{\frac{x_1y_1y_1}{x_1}} - \sqrt{\frac{x_0y_0y_0}{x_0}} = y_1 - y_0$$
 $$\sqrt{y_1^2} - \sqrt{y_0^2} = y_1 - y_0$$
 $$y_1 - y_0 = y_1 - y_0$$
 
-## Pricing
+## 가격 책정
 
-Again, we don't need to calculate actual prices–we can calculate the output amount right away. Also, since we're not going to track and store $x$ and $y$, our calculation will be based only on $L$ and $\sqrt{P}$.
+다시 말하지만, 실제 가격을 계산할 필요는 없습니다. 출력량을 바로 계산할 수 있습니다. 또한 $x$와 $y$를 추적하고 저장하지 않으므로 계산은 $L$과 $\sqrt{P}$만을 기반으로 합니다.
 
-From the above formula, we can find $\Delta y$:
+위의 공식에서 $\Delta y$를 찾을 수 있습니다.
 
 $$\Delta y = \Delta \sqrt{P} L$$
 
-> See the third step in the proof above.
+> 위의 증명에서 세 번째 단계를 참조하십시오.
 
-As we discussed above, prices in a pool are reciprocals of each other. Thus, $\Delta x$ is:
+위에서 논의한 바와 같이 풀의 가격은 서로 역수입니다. 따라서 $\Delta x$는 다음과 같습니다.
 
 $$\Delta x = \Delta \frac{1}{\sqrt{P}} L$$
 
-$L$ and $\sqrt{P}$ allow us to not store and update pool reserves. Also, we don't need to calculate $\sqrt{P}$ each time because we can always find $\Delta \sqrt{P}$ and its reciprocal.
+$L$과 $\sqrt{P}$를 사용하면 풀 준비금을 저장하고 업데이트할 필요가 없습니다. 또한 $\sqrt{P}$를 매번 계산할 필요도 없습니다. 왜냐하면 항상 $\Delta \sqrt{P}$와 그 역수를 찾을 수 있기 때문입니다.
 
-## Ticks
+## 틱
 
-As we learned in this chapter, the infinite price range of V2 is split into shorter price ranges in V3. Each of these shorter price ranges is limited by boundaries–upper and lower points. To track the coordinates of these boundaries, Uniswap V3 uses *ticks*.
+이 장에서 배웠듯이 V2의 무한 가격 범위는 V3에서 더 짧은 가격 범위로 분할됩니다. 이러한 각 짧은 가격 범위는 경계(상한 및 하한 지점)로 제한됩니다. 이러한 경계의 좌표를 추적하기 위해 Uniswap V3는 *틱*을 사용합니다.
 
-![Price ranges and ticks](images/ticks_and_ranges.png)
 
-In V3, the entire price range is demarcated by evenly distributed discrete ticks. Each tick has an index and corresponds to a certain price:
+
+![가격 범위 및 틱](images/ticks_and_ranges.png)
+
+V3에서 전체 가격 범위는 균등하게 분산된 이산 틱으로 구분됩니다. 각 틱은 인덱스를 가지며 특정 가격에 해당합니다.
 
 $$p(i) = 1.0001^i$$
 
-Where $p(i)$ is the price at tick $i$. Taking powers of 1.0001 has a desirable property: the difference between two adjacent ticks is 0.01% or *1 basis point*.
+여기서 $p(i)$는 틱 $i$에서의 가격입니다. 1.0001의 거듭제곱을 취하는 것은 바람직한 속성을 가집니다. 인접한 두 틱 사이의 차이는 0.01% 또는 *1 베이시스 포인트*입니다.
 
-> Basis point (1/100th of 1%, or 0.01%, or 0.0001) is a unit of measure of percentages in finance. You could've heard about the basis point when central banks announced changes in interest rates.
+> 베이시스 포인트(1/100th of 1%, 또는 0.01%, 또는 0.0001)는 금융에서 백분율을 측정하는 단위입니다. 중앙 은행이 금리 변경을 발표할 때 베이시스 포인트에 대해 들어봤을 것입니다.
 
-As we discussed above, Uniswap V3 stores $\sqrt{P}$, not $P$. Thus, the formula is in fact:
+위에서 논의한 바와 같이 Uniswap V3는 $P$가 아닌 $\sqrt{P}$를 저장합니다. 따라서 실제 공식은 다음과 같습니다.
 
 $$\sqrt{p(i)} = \sqrt{1.0001}^i = 1.0001 ^{\frac{i}{2}}$$
 
-So, we get values like: $\sqrt{p(0)} = 1$, $\sqrt{p(1)} = \sqrt{1.0001} \approx 1.00005$, $\sqrt{p(-1)} \approx 0.99995$.
+따라서 $\sqrt{p(0)} = 1$, $\sqrt{p(1)} = \sqrt{1.0001} \approx 1.00005$, $\sqrt{p(-1)} \approx 0.99995$와 같은 값을 얻습니다.
 
-Ticks are integers that can be positive and negative and, of course, they're not infinite. Uniswap V3 stores $\sqrt{P}$ as a fixed point Q64.96 number, which is a rational number that uses 64 bits for the integer part and 96 bits for the fractional part. Thus, prices (equal to the square of $\sqrt{P}$) are within the range: $[2^{-128}, 2^{128}]$. And ticks are within the range:
+틱은 양수와 음수일 수 있는 정수이며, 물론 무한하지 않습니다. Uniswap V3는 $\sqrt{P}$를 고정 소수점 Q64.96 숫자로 저장합니다. 이는 정수 부분에 64비트, 소수 부분에 96비트를 사용하는 유리수입니다. 따라서 가격($\sqrt{P}$의 제곱과 같음)은 $[2^{-128}, 2^{128}]$ 범위 내에 있습니다. 그리고 틱은 다음 범위 내에 있습니다.
 
 $$[log_{1.0001}2^{-128}, log_{1.0001}{2^{128}}] = [-887272, 887272]$$
 
-> For deeper dive into the math of Uniswap V3, I cannot but recommend [this technical note](https://atiselsts.github.io/pdfs/uniswap-v3-liquidity-math.pdf) by [Atis Elsts](https://twitter.com/atiselsts).
+> Uniswap V3의 수학에 대해 더 자세히 알아보려면 [Atis Elsts](https://twitter.com/atiselsts)의 [기술 노트](https://atiselsts.github.io/pdfs/uniswap-v3-liquidity-math.pdf)를 추천하지 않을 수 없습니다.

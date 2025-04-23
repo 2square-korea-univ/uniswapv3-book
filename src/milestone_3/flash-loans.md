@@ -1,14 +1,14 @@
-## Flash Loans
+## 플래시 론
 
-Both Uniswap V2 and V3 implement flash loans: unlimited and uncollateralized loans that must be repaid in the same transaction. Pools give users arbitrary amounts of tokens that they request, but, by the end of the call, the amounts must be repaid, with a small fee on top.
+Uniswap V2와 V3 모두 플래시 론을 구현합니다. 플래시 론은 무제한이며 무담보 대출로, 동일한 트랜잭션 내에서 상환되어야 합니다. 풀은 사용자에게 요청하는 임의의 양의 토큰을 제공하지만, 호출이 끝나기 전에 소량의 수수료와 함께 해당 금액을 상환해야 합니다.
 
-The fact that flash loans must be repaid in the same transaction means that flash loans cannot be taken by regular users: as a user, you cannot program custom logic in transactions. Flash loans can only be taken and repaid by smart contracts.
+플래시 론은 동일한 트랜잭션 내에서 상환되어야 한다는 사실은 일반 사용자가 플래시 론을 이용할 수 없다는 것을 의미합니다. 일반 사용자는 트랜잭션 내에서 사용자 정의 로직을 프로그래밍할 수 없기 때문입니다. 플래시 론은 스마트 컨트랙트에 의해서만 실행 및 상환될 수 있습니다.
 
-Flash loans are a powerful financial instrument in DeFi. While it's often used to exploit vulnerabilities in DeFi protocols (by inflating pool balances and abusing flawed state management), it's many good applications (e.g. leveraged positions management on lending protocols)–this is why DeFi applications that store liquidity provide permissionless flash loans.
+플래시 론은 DeFi에서 강력한 금융 도구입니다. 플래시 론은 종종 DeFi 프로토콜의 취약점을 악용하는 데 사용되지만 (풀 잔액을 부풀리고 결함 있는 상태 관리를 남용함으로써), 레버리지 포지션 관리와 같은 유용한 애플리케이션도 많습니다. – 이것이 유동성을 저장하는 DeFi 애플리케이션이 무허가형 플래시 론을 제공하는 이유입니다.
 
-### Implementing Flash Loans
+### 플래시 론 구현
 
-In Uniswap V2 flash loans were part of the swapping functionality: it was possible to borrow tokens during a swap, but you had to return them or an equal amount of the other pool token, in the same transaction. In V3, flash loans are separated from swapping–it's simply a function that gives the caller a number of tokens they requested, calls a callback on the caller, and ensures a flash loan was repaid:
+Uniswap V2 플래시 론은 스왑 기능의 일부였습니다. 스왑 중에 토큰을 빌릴 수 있었지만, 동일한 트랜잭션 내에서 해당 토큰 또는 동일한 양의 다른 풀 토큰을 반환해야 했습니다. V3에서는 플래시 론이 스왑과 분리되었습니다. V3 플래시 론은 단순히 호출자에게 요청한 토큰 수를 제공하고, 호출자에 대한 콜백을 호출하며, 플래시 론이 상환되었는지 확인하는 함수입니다.
 
 ```solidity
 function flash(
@@ -31,9 +31,9 @@ function flash(
 }
 ```
 
-The function sends tokens to the caller and then calls `uniswapV3FlashCallback` on it–this is where the caller is expected to repay the loan. Then the function ensures that its balances haven't decreased. Notice that custom data is allowed to be passed to the callback.
+이 함수는 호출자에게 토큰을 보내고 호출자에게 `uniswapV3FlashCallback`을 호출합니다. – 여기가 호출자가 론을 상환해야 하는 곳입니다. 그런 다음 함수는 잔액이 감소하지 않았는지 확인합니다. 사용자 정의 데이터를 콜백으로 전달할 수 있다는 점에 유의하십시오.
 
-Here's an example of the callback implementation:
+다음은 콜백 구현의 예입니다.
 
 ```solidity
 function uniswapV3FlashCallback(bytes calldata data) public {
@@ -47,6 +47,6 @@ function uniswapV3FlashCallback(bytes calldata data) public {
 }
 ```
 
-In this implementation, we're simply sending tokens back to the pool (I used this callback in `flash` function tests).  In reality, it can use the loaned amounts to perform some operations on other DeFi protocols. But it always must repay the loan in this callback.
+이 구현에서는 단순히 토큰을 풀로 다시 보내고 있습니다 (저는 `flash` 함수 테스트에서 이 콜백을 사용했습니다). 실제로, 빌린 금액을 사용하여 다른 DeFi 프로토콜에서 특정 작업을 수행할 수 있습니다. 그러나 항상 이 콜백에서 론을 상환해야 합니다.
 
-And that's it!
+이것으로 끝입니다!

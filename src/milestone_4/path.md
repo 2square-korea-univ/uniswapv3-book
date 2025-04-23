@@ -1,48 +1,48 @@
-# Swap Path
+# 스왑 경로
 
-Let's imagine that we have only these pools: WETH/USDC, USDC/USDT, and WBTC/USDT. If we want to swap WETH for WBTC, we'll need to make multiple swaps (WETH→USDC→USDT→WBTC) since there's no WETH/WBTC pool. We can do this manually or we can improve our contracts to handle such chained, or multi-pool, swaps. Of course, we'll do the latter!
+WETH/USDC, USDC/USDT, WBTC/USDT 풀만 있다고 가정해 봅시다. WETH를 WBTC로 스왑하고 싶지만 WETH/WBTC 풀이 없다면, 여러 번의 스왑(WETH→USDC→USDT→WBTC)을 거쳐야 합니다. 이러한 스왑을 수동으로 처리할 수도 있지만, 컨트랙트를 개선하여 체인 스왑, 즉 다중 풀 스왑을 처리하도록 할 수 있습니다. 물론 후자를 선택할 것입니다!
 
-When doing multi-pool swaps, we send the output of the previous swap to the input of the next one. For example:
+다중 풀 스왑을 수행할 때는 이전 스왑의 결과물을 다음 스왑의 입력값으로 전달합니다. 예를 들면 다음과 같습니다.
 
-1. in the WETH/USDC pool, we're selling WETH and buying USDC;
-1. in the USDC/USDT pool, we're selling USDC from the previous swap and buying USDT;
-1. in the WBTC/USDT pool, we're selling USDT from the previous pool and buying WBTC.
+1. WETH/USDC 풀에서 WETH를 판매하고 USDC를 구매합니다.
+2. USDC/USDT 풀에서 이전 스왑에서 얻은 USDC를 판매하고 USDT를 구매합니다.
+3. WBTC/USDT 풀에서 이전 풀에서 얻은 USDT를 판매하고 WBTC를 구매합니다.
 
-We can turn this series into a path:
+이러한 일련의 과정을 경로로 나타낼 수 있습니다.
 
 ```
 WETH/USDC,USDC/USDT,WBTC/USDT
 ```
 
-And iterate over such a path in our contracts to perform multiple swaps in one transaction. However, recall from the previous chapter that we don't need to know pool addresses and, instead, we can derive them from pool parameters. Thus, the above path can be turned into a series of tokens:
+그리고 컨트랙트에서 이 경로를 반복하여 단일 트랜잭션으로 여러 스왑을 수행할 수 있습니다. 하지만 이전 장에서 풀 주소를 알 필요 없이 풀 파라미터로부터 풀 주소를 유도할 수 있다는 것을 기억하십시오. 따라서 위의 경로는 다음과 같은 토큰 시리즈로 바뀔 수 있습니다.
 
 ```
 WETH, USDC, USDT, WBTC
 ```
 
-Recall that tick spacing is another parameter (besides tokens) that identifies a pool. Thus, the above path becomes:
+틱 간격은 토큰 외에 풀을 식별하는 또 다른 파라미터입니다. 따라서 위의 경로는 다음과 같이 됩니다.
 
 ```
 WETH, 60, USDC, 10, USDT, 60, WBTC
 ```
 
-Where 60 and 10 are tick spacings. We're using 60 in volatile pairs (e.g. ETH/USDC, WBTC/USDT) and 10 in stablecoin pairs (USDC/USDT).
+여기서 60과 10은 틱 간격입니다. 변동성이 큰 페어(예: ETH/USDC, WBTC/USDT)에는 60을 사용하고, 스테이블 코인 페어(USDC/USDT)에는 10을 사용합니다.
 
-Now, having such a path, we can iterate over it to build pool parameters for each of the pools:
+이제 이러한 경로를 통해 각 풀에 대한 풀 파라미터를 구성하기 위해 반복할 수 있습니다.
 
-1. `WETH, 60, USDC`;
-1. `USDC, 10, USDT`;
-1. `USDT, 60, WBTC`.
+1. `WETH, 60, USDC`
+2. `USDC, 10, USDT`
+3. `USDT, 60, WBTC`
 
-Knowing these parameters, we can derive pool addresses using `PoolAddress.computeAddress`, which we implemented in the previous chapter.
+이러한 파라미터를 알면 이전 장에서 구현한 `PoolAddress.computeAddress`를 사용하여 풀 주소를 유도할 수 있습니다.
 
-> We also can use this concept when doing swaps within one pool: the path would simply contain the parameters of one pool. And, thus, we can use swap paths in all swaps, universally.
+> 또한 단일 풀 내에서 스왑을 수행할 때도 이 개념을 사용할 수 있습니다. 경로는 단순히 단일 풀의 파라미터를 포함하게 됩니다. 따라서 스왑 경로를 모든 스왑에서 보편적으로 사용할 수 있습니다.
 
-Let's build a library to work with swap paths.
+스왑 경로 작업을 위한 라이브러리를 구축해 보겠습니다.
 
-## Path Library
+## 경로 라이브러리
 
-In code, a swap path is a sequence of bytes. In Solidity, a path can be built like this:
+코드에서 스왑 경로는 바이트 시퀀스입니다. Solidity에서 경로는 다음과 같이 구축할 수 있습니다.
 ```solidity
 bytes.concat(
     bytes20(address(weth)),
@@ -55,53 +55,53 @@ bytes.concat(
 );
 ```
 
-It looks like this:
+다음과 같은 형태입니다.
 ```shell
-0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 # weth address
+0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 # weth 주소
   00003c                                   # 60
-  A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 # usdc address
+  A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 # usdc 주소
   00000a                                   # 10
-  dAC17F958D2ee523a2206206994597C13D831ec7 # usdt address
+  dAC17F958D2ee523a2206206994597C13D831ec7 # usdt 주소
   00003c                                   # 60
-  2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599 # wbtc address
+  2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599 # wbtc 주소
 ```
 
-These are the functions that we'll need to implement:
-1. calculating the number of pools in a path;
-1. figuring out if a path has multiple pools;
-1. extracting first pool parameters from a path;
-1. proceeding to the next pair in a path;
-1. and decoding first pool parameters.
+구현해야 할 함수는 다음과 같습니다.
+1. 경로에 있는 풀의 수 계산
+2. 경로에 여러 풀이 있는지 확인
+3. 경로에서 첫 번째 풀 파라미터 추출
+4. 경로에서 다음 페어로 진행
+5. 첫 번째 풀 파라미터 디코딩
 
-### Calculating the Number of Pools in a Path
-Let's begin with calculating the number of pools in a path:
+### 경로에 있는 풀의 수 계산
+경로에 있는 풀의 수를 계산하는 것부터 시작해 보겠습니다.
 ```solidity
 // src/lib/Path.sol
 library Path {
-    /// @dev The length the bytes encoded address
+    /// @dev 바이트로 인코딩된 주소의 길이
     uint256 private constant ADDR_SIZE = 20;
-    /// @dev The length the bytes encoded tick spacing
+    /// @dev 바이트로 인코딩된 틱 간격의 길이
     uint256 private constant TICKSPACING_SIZE = 3;
 
-    /// @dev The offset of a single token address + tick spacing
+    /// @dev 단일 토큰 주소 + 틱 간격의 오프셋
     uint256 private constant NEXT_OFFSET = ADDR_SIZE + TICKSPACING_SIZE;
-    /// @dev The offset of an encoded pool key (tokenIn + tick spacing + tokenOut)
+    /// @dev 인코딩된 풀 키의 오프셋 (tokenIn + 틱 간격 + tokenOut)
     uint256 private constant POP_OFFSET = NEXT_OFFSET + ADDR_SIZE;
-    /// @dev The minimum length of a path that contains 2 or more pools;
+    /// @dev 2개 이상의 풀을 포함하는 경로의 최소 길이
     uint256 private constant MULTIPLE_POOLS_MIN_LENGTH =
         POP_OFFSET + NEXT_OFFSET;
 
     ...
 ```
 
-We first define a few constants:
-1. `ADDR_SIZE` is the size of an address, 20 bytes;
-1. `TICKSPACING_SIZE` is the size of a tick spacing, 3 bytes (`uint24`);
-1. `NEXT_OFFSET` is the offset of a next token address–to get it, we skip an address and a tick spacing;
-1. `POP_OFFSET` is the offset of a pool key (token address + tick spacing + token address);
-1. `MULTIPLE_POOLS_MIN_LENGTH` is the minimum length of a path that contains 2 or more pools (one set of pool parameters + tick spacing + token address).
+먼저 몇 가지 상수를 정의합니다.
+1. `ADDR_SIZE`는 주소의 크기로, 20바이트입니다.
+2. `TICKSPACING_SIZE`는 틱 간격의 크기로, 3바이트(`uint24`)입니다.
+3. `NEXT_OFFSET`는 다음 토큰 주소의 오프셋입니다. 이를 얻으려면 주소와 틱 간격을 건너뜁니다.
+4. `POP_OFFSET`는 풀 키(토큰 주소 + 틱 간격 + 토큰 주소)의 오프셋입니다.
+5. `MULTIPLE_POOLS_MIN_LENGTH`는 2개 이상의 풀(하나의 풀 파라미터 세트 + 틱 간격 + 토큰 주소)을 포함하는 경로의 최소 길이입니다.
 
-To count the number of pools in a path, we subtract the size of an address (first or last token in a path) and divide the remaining part by `NEXT_OFFSET` (address + tick spacing):
+경로에 있는 풀의 수를 세려면 경로의 길이에서 주소의 크기(경로의 첫 번째 또는 마지막 토큰)를 빼고 남은 부분을 `NEXT_OFFSET`(주소 + 틱 간격)으로 나눕니다.
 
 ```solidity
 function numPools(bytes memory path) internal pure returns (uint256) {
@@ -109,8 +109,8 @@ function numPools(bytes memory path) internal pure returns (uint256) {
 }
 ```
 
-### Figuring Out if a Path Has Multiple Pools
-To check if there are multiple pools in a path, we need to compare the length of a path with `MULTIPLE_POOLS_MIN_LENGTH`:
+### 경로에 여러 풀이 있는지 확인
+경로에 여러 풀이 있는지 확인하려면 경로의 길이를 `MULTIPLE_POOLS_MIN_LENGTH`와 비교해야 합니다.
 
 ```solidity
 function hasMultiplePools(bytes memory path) internal pure returns (bool) {
@@ -118,11 +118,11 @@ function hasMultiplePools(bytes memory path) internal pure returns (bool) {
 }
 ```
 
-### Extracting First Pool Parameters From a Path
+### 경로에서 첫 번째 풀 파라미터 추출
 
-To implement other functions, we'll need a helper library because Solidity doesn't have native bytes manipulation functions. Specifically, we'll need a function to extract a sub-array from an array of bytes, and a couple of functions to convert bytes to `address` and `uint24`.
+다른 함수를 구현하려면 Solidity에 기본 바이트 조작 함수가 없으므로 헬퍼 라이브러리가 필요합니다. 특히 바이트 배열에서 하위 배열을 추출하는 함수, 바이트를 `address` 및 `uint24`로 변환하는 몇 가지 함수가 필요합니다.
 
-Luckily, there's a great open-source library called [solidity-bytes-utils](https://github.com/GNSPS/solidity-bytes-utils). To use the library, we need to extend the `bytes` type in the `Path` library:
+다행히 [solidity-bytes-utils](https://github.com/GNSPS/solidity-bytes-utils)라는 훌륭한 오픈 소스 라이브러리가 있습니다. 라이브러리를 사용하려면 `Path` 라이브러리에서 `bytes` 유형을 확장해야 합니다.
 ```solidity
 library Path {
     using BytesLib for bytes;
@@ -130,7 +130,7 @@ library Path {
 }
 ```
 
-We can implement `getFirstPool` now:
+이제 `getFirstPool`을 구현할 수 있습니다.
 ```solidity
 function getFirstPool(bytes memory path)
     internal
@@ -141,12 +141,11 @@ function getFirstPool(bytes memory path)
 }
 ```
 
-The function simply returns the first "token address + tick spacing + token address" segment encoded as bytes.
+이 함수는 바이트로 인코딩된 첫 번째 "토큰 주소 + 틱 간격 + 토큰 주소" 세그먼트를 반환합니다.
 
-### Proceeding to a Next Pair in a Path
+### 경로에서 다음 페어로 진행
 
-
-We'll use the next function when iterating over a path and throwing away processed pools. Notice that we're removing "token address + tick spacing", not full pool parameters, because we need the other token address to calculate the next pool address.
+다음 함수는 경로를 반복하고 처리된 풀을 버릴 때 사용합니다. 다음 풀 주소를 계산하려면 다른 토큰 주소가 필요하므로 전체 풀 파라미터가 아닌 "토큰 주소 + 틱 간격"만 제거합니다.
 
 ```solidity
 function skipToken(bytes memory path) internal pure returns (bytes memory) {
@@ -154,9 +153,9 @@ function skipToken(bytes memory path) internal pure returns (bytes memory) {
 }
 ```
 
-### Decoding First Pool Parameters
+### 첫 번째 풀 파라미터 디코딩
 
-And, finally, we need to decode the parameters of the first pool in a path:
+마지막으로 경로에서 첫 번째 풀의 파라미터를 디코딩해야 합니다.
 
 ```solidity
 function decodeFirstPool(bytes memory path)
@@ -174,7 +173,7 @@ function decodeFirstPool(bytes memory path)
 }
 ```
 
-Unfortunately, `BytesLib` doesn't implement `toUint24` function but we can implement it ourselves! `BytesLib` has multiple `toUintXX` functions, so we can take one of them and convert it to a `uint24` one:
+안타깝게도 `BytesLib`은 `toUint24` 함수를 구현하지 않지만 직접 구현할 수 있습니다! `BytesLib`에는 여러 개의 `toUintXX` 함수가 있으므로 그 중 하나를 가져와서 `uint24` 함수로 변환할 수 있습니다.
 ```solidity
 library BytesLibExt {
     function toUint24(bytes memory _bytes, uint256 _start)
@@ -194,7 +193,7 @@ library BytesLibExt {
 }
 ```
 
-We're doing this in a new library contract, which we can then use in our Path library alongside `BytesLib`:
+새로운 라이브러리 컨트랙트에서 이를 수행하고, 그런 다음 `BytesLib`과 함께 Path 라이브러리에서 사용할 수 있습니다.
 
 ```solidity
 library Path {

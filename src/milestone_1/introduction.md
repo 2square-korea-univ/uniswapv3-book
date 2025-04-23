@@ -1,22 +1,23 @@
-# Introduction
+# 서론
 
-In this milestone, we'll build a pool contract that can receive liquidity from users and make swaps within a price range.  To keep it as simple as possible, we'll provide liquidity only in one price range and we'll allow to make swaps only in one direction. Also, we'll calculate all the required math manually to get better intuition before starting to use mathematical libs in Solidity.
+이번 단계에서는, 사용자로부터 유동성을 받고 가격 범위 내에서 스왑을 수행할 수 있는 풀 컨트랙트를 구축할 것입니다. 가능한 한 단순하게 유지하기 위해, 하나의 가격 범위에서만 유동성을 제공하고 한 방향으로만 스왑을 허용할 것입니다. 또한, 솔리디티에서 수학 라이브러리를 사용하기 전에 더 나은 직관을 얻기 위해 필요한 모든 수학적 계산을 수동으로 수행할 것입니다.
 
-Let's model the situation we'll build:
-1. There will be an ETH/USDC pool contract. ETH will be the \\(x\\) reserve, and USDC will be the \\(y\\) reserve.
-1. We'll set the current price to 5000 USDC per 1 ETH.
-1. The range we'll provide liquidity into is 4545-5500 USDC per 1 ETH.
-1. We'll buy some ETH from the pool. At this point, since we have only one price range, we want the price of the trade
-to stay within the price range.
+구축할 상황을 모델링해 봅시다:
+1. ETH/USDC 풀 컨트랙트가 있을 것입니다. ETH는 \\(x\\) 준비금이 되고, USDC는 \\(y\\) 준비금이 됩니다.
+1. 현재 가격을 1 ETH당 5000 USDC로 설정할 것입니다.
+1. 유동성을 제공할 범위는 1 ETH당 4545-5500 USDC입니다.
+1. 풀에서 약간의 ETH를 구매할 것입니다. 이 시점에서, 가격 범위가 하나뿐이므로, 거래 가격이 가격 범위 내에 유지되기를 바랍니다.
 
-Visually, this model looks like this:
+시각적으로, 이 모델은 다음과 같습니다:
+
+
 
 ![Buy ETH for USDC visualization](images/buy_eth_model.png)
 
-Before getting to the code, let's figure out the math and calculate all the parameters of the model. To keep things simple, I'll do math calculations in Python before implementing them in Solidity. This will allow us to focus on the math without diving into the nuances of math in Solidity. This also means that, in smart contracts, we'll hardcode all the amounts. This will allow us to start with a simple minimal viable product.
+코드 작성에 들어가기 전에, 먼저 수학을 이해하고 모델의 모든 매개변수를 계산해 봅시다. 단순하게 유지하기 위해, 솔리디티에서 수학을 구현하기 전에 파이썬에서 수학 계산을 수행할 것입니다. 이렇게 하면 솔리디티의 수학적 뉘앙스에 깊이 들어가지 않고 수학에 집중할 수 있습니다. 이는 또한 스마트 컨트랙트에서 모든 양을 하드코딩할 것임을 의미합니다. 이렇게 하면 간단한 최소 실행 가능 제품으로 시작할 수 있습니다.
 
-For your convenience, I put all the Python calculations in [unimath.py](https://github.com/Jeiwan/uniswapv3-code/blob/main/unimath.py).
+편의를 위해, 모든 파이썬 계산을 [unimath.py](https://github.com/Jeiwan/uniswapv3-code/blob/main/unimath.py)에 넣어 두었습니다.
 
-> You'll find the complete code of this milestone in [this Github branch](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_1).
+> 이번 단계의 전체 코드는 [이 Github 브랜치](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_1)에서 찾을 수 있습니다.
 
-> If you have any questions, feel free to ask them in [the GitHub Discussion of this milestone](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-1-first-swap)!
+> 질문이 있으시면, [이번 단계의 GitHub 토론](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-1-first-swap)에서 자유롭게 질문해주세요!

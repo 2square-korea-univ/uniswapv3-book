@@ -1,29 +1,29 @@
-# Protocol Fees
+# 프로토콜 수수료
 
-While working on the Uniswap implementation, you've probably asked yourself, "How does Uniswap make money?" Well, it doesn't (at least as of September 2022).
+Uniswap 구현을 작업하면서, "Uniswap은 어떻게 돈을 벌까?"라는 질문을 스스로에게 던져봤을 것입니다. 음, (적어도 2022년 9월 현재로는) 그렇지 않습니다.
 
-In the implementation we've built so far, traders pay liquidity providers for providing liquidity, and Uniswap Labs, as the company that developed the DEX, is not part of this process. Neither traders nor liquidity providers pay Uniswap Labs for using the Uniswap DEX. How come?
+지금까지 구축한 구현에서, 거래자들은 유동성을 제공한 것에 대한 대가로 유동성 공급자에게 수수료를 지불하며, DEX를 개발한 회사인 Uniswap Labs는 이 과정에 참여하지 않습니다. 거래자나 유동성 공급자 모두 Uniswap DEX를 사용하는 것에 대해 Uniswap Labs에 비용을 지불하지 않습니다. 어째서일까요?
 
-There's a way for Uniswap Labs to start making money on the DEX. However, the mechanism hasn't been enabled yet (again, as of September 2022). Each Uniswap pool has a *protocol fees* collection mechanism. Protocol fees are collected from swap fees: a small portion of swap fees is subtracted and saved as protocol fees to later be collected by the Factory contract owner (Uniswap Labs). The size of protocol fees is expected to be determined by UNI token holders, but it must be between $1/4$ and $1/10$ (inclusive) of swap fees.
+Uniswap Labs가 DEX에서 수익을 창출하기 시작할 수 있는 방법이 있습니다. 하지만, 그 메커니즘은 아직 활성화되지 않았습니다 (다시 한번, 2022년 9월 현재). 각 Uniswap 풀에는 *프로토콜 수수료* 징수 메커니즘이 있습니다. 프로토콜 수수료는 스왑 수수료에서 징수됩니다: 스왑 수수료의 작은 부분이 차감되어 프로토콜 수수료로 저장되며, 나중에 팩토리 컨트랙트 소유자 (Uniswap Labs)가 징수합니다. 프로토콜 수수료의 크기는 UNI 토큰 보유자가 결정할 것으로 예상되지만, 스왑 수수료의 $1/4$에서 $1/10$ (포함) 사이여야 합니다.
 
-For brevity, we're not going to add protocol fees to our implementation, but let's see how they're implemented in Uniswap.
+간결성을 위해, 저희는 프로토콜 수수료를 구현에 추가하지 않을 것입니다. 하지만 Uniswap에서 어떻게 구현되었는지 살펴봅시다.
 
-Protocol fee size is stored in `slot0`:
+프로토콜 수수료 크기는 `slot0`에 저장됩니다:
 
 ```solidity
 // UniswapV3Pool.sol
 struct Slot0 {
     ...
-    // the current protocol fee as a percentage of the swap fee taken on withdrawal
-    // represented as an integer denominator (1/x)%
+    // 인출 시 스왑 수수료의 백분율로 적용되는 현재 프로토콜 수수료
+    // 정수 분모 (1/x)%로 표현
     uint8 feeProtocol;
     ...
 }
 ```
 
-A global accumulator is needed to track accrued fees:
+축적된 수수료를 추적하기 위한 글로벌 누적기가 필요합니다:
 ```solidity
-// accumulated protocol fees in token0/token1 units
+// token0/token1 단위로 축적된 프로토콜 수수료
 struct ProtocolFees {
     uint128 token0;
     uint128 token1;
@@ -31,7 +31,7 @@ struct ProtocolFees {
 ProtocolFees public override protocolFees;
 ```
 
-Protocol fees are set in the `setFeeProtocol` function:
+프로토콜 수수료는 `setFeeProtocol` 함수에서 설정됩니다:
 
 ```solidity
 function setFeeProtocol(uint8 feeProtocol0, uint8 feeProtocol1) external override lock onlyFactoryOwner {
@@ -45,9 +45,9 @@ function setFeeProtocol(uint8 feeProtocol0, uint8 feeProtocol1) external overrid
 }
 ```
 
-As you can see, it's allowed to set protocol fees separately for each of the tokens. The values are two `uint8` that are packed to be stored in one `uint8`: `feeProtocol1` is shifted to the left by 4 bits (this is identical to multiplying it by 16) and added to `feeProtocol0`. To unpack `feeProtocol0`, a remainder of division `slot0.feeProtocol` by 16 is taken; `feeProtocol1` is simply shifting `slot0.feeProtocol` to the right by 4 bits. Such packing works because neither `feeProtocol0`, nor `feeProtocol1` can be greater than 10.
+보시다시피, 각 토큰에 대해 프로토콜 수수료를 개별적으로 설정하는 것이 허용됩니다. 값은 두 개의 `uint8`이며, 하나의 `uint8`에 저장되도록 패킹됩니다: `feeProtocol1`은 왼쪽으로 4비트 시프트(16을 곱하는 것과 동일)되고 `feeProtocol0`에 더해집니다. `feeProtocol0`을 언패킹하려면, `slot0.feeProtocol`을 16으로 나눈 나머지를 취합니다. `feeProtocol1`은 단순히 `slot0.feeProtocol`을 오른쪽으로 4비트 시프트합니다. 이러한 패킹은 `feeProtocol0`나 `feeProtocol1` 모두 10보다 클 수 없기 때문에 작동합니다.
 
-Before beginning a swap, we need to choose one of the protocol fees depending on the swap direction (swap and protocol fees are collected on input tokens):
+스왑을 시작하기 전에, 스왑 방향에 따라 프로토콜 수수료 중 하나를 선택해야 합니다 (스왑 및 프로토콜 수수료는 입력 토큰에 대해 징수됩니다):
 
 ```solidity
 function swap(...) {
@@ -56,7 +56,7 @@ function swap(...) {
     ...
 ```
 
-To accrue protocol fees, we subtract them from swap fees right after computing swap step amounts:
+프로토콜 수수료를 축적하기 위해, 스왑 단계 금액을 계산한 직후 스왑 수수료에서 차감합니다:
 
 ```solidity
 ...
@@ -74,7 +74,7 @@ while (...) {
 ...
 ```
 
-After a swap is done, the global protocol fees accumulator needs to be updated:
+스왑이 완료된 후, 글로벌 프로토콜 수수료 누적기를 업데이트해야 합니다:
 ```solidity
 if (zeroForOne) {
     if (state.protocolFee > 0) protocolFees.token0 += state.protocolFee;
@@ -83,7 +83,7 @@ if (zeroForOne) {
 }
 ```
 
-Finally, the Factory contract owner can collect accrued protocol fees by calling `collectProtocol`:
+마지막으로, 팩토리 컨트랙트 소유자는 `collectProtocol`을 호출하여 축적된 프로토콜 수수료를 수집할 수 있습니다:
 
 ```solidity
 function collectProtocol(

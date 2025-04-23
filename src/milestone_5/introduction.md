@@ -1,15 +1,15 @@
-# Fees and Price Oracle
+# 수수료 및 가격 오라클
 
-In this milestone, we're going to add two new features to our Uniswap implementation. They share one similarity: they work on top of what we have already built–that's why we've delayed them until this milestone. However, they're not equally important.
+이번 이정표에서는 Uniswap 구현체에 두 가지 새로운 기능을 추가할 것입니다. 이 기능들은 한 가지 공통점을 공유합니다. 바로 이미 구축한 기반 위에 작동한다는 것입니다. 이것이 바로 이 기능들을 이번 이정표까지 미룬 이유입니다. 그러나 중요도는 동일하지 않습니다.
 
-We're going to add swap fees and a price oracle:
-- Swap fees are a crucial mechanism of the DEX design we're implementing. They're the glue that makes things stick together. Swap fees incentivize liquidity providers to provide liquidity, and no trades are possible without liquidity, as we have already learned.
-- A price oracle, on the other hand, is an optional utility function of a DEX. A DEX, while conducting trades, can also function as a price oracle–that is, provide token prices to other services. This doesn't affect actual swaps but provides a useful service to other on-chain applications.
+추가할 기능은 스왑 수수료와 가격 오라클입니다:
+- 스왑 수수료는 우리가 구현하는 DEX 설계의 핵심 메커니즘입니다. 스왑 수수료는 모든 것을 하나로 묶는 본질적인 접착제 역할을 합니다. 스왑 수수료는 유동성 공급자에게 유동성을 제공하도록 인센티브를 제공하며, 이미 학습했듯이 유동성 없이는 거래가 불가능합니다.
+- 반면에 가격 오라클은 DEX의 선택적인 유틸리티 기능입니다. DEX는 거래를 수행하면서 가격 오라클 역할도 할 수 있습니다. 즉, 다른 서비스에 토큰 가격을 제공할 수 있습니다. 가격 오라클 기능은 실제 스왑에는 영향을 미치지 않지만, 다른 온체인 애플리케이션에 유용한 서비스를 제공합니다.
 
-Alright, let's get building!
+자, 이제 구축을 시작해 봅시다!
 
-> You'll find the complete code of this chapter in [this Github branch](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_5).
+> 이번 장의 전체 코드는 [이 Github 브랜치](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_5)에서 확인할 수 있습니다.
 >
-> This milestone introduces a lot of code changes in existing contracts. [Here you can see all changes since the last milestone](https://github.com/Jeiwan/uniswapv3-code/compare/milestone_4...milestone_5)
+> 이번 이정표에서는 기존 컨트랙트에 많은 코드 변경 사항이 도입되었습니다. [여기에서 지난 이정표 이후의 모든 변경 사항](https://github.com/Jeiwan/uniswapv3-code/compare/milestone_4...milestone_5)을 확인할 수 있습니다.
 
-> If you have any questions feel free to ask them in [the GitHub Discussion of this milestone](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-5-fees-and-price-oracle)!
+> 질문이 있으시면 [이번 이정표의 GitHub 토론](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-5-fees-and-price-oracle)에서 자유롭게 질문해주세요!

@@ -1,24 +1,24 @@
-# NFT ManagerContract
+## NFT ManagerContract
 
-We're not going to add NFT-related functionality to the pool contract–we need a separate contract that will merge NFTs and liquidity positions. Recall that, while working on our implementation, we built the `UniswapV3Manager` contract to facilitate interaction with pool contracts (to make some calculations simpler and to enable multi-pool swaps). This contract was a good demonstration of how core Uniswap contracts can be extended. And we're going to push this idea a little bit further.
+우리는 풀 컨트랙트에 NFT 관련 기능을 추가하지 않을 것입니다. 대신 NFT와 유동성 포지션을 병합할 별도의 컨트랙트가 필요합니다. 구현 작업을 진행하면서 풀 컨트랙트와의 상호 작용을 용이하게 하기 위해 `UniswapV3Manager` 컨트랙트를 구축했던 것을 상기해 보십시오 (일부 계산을 더 간단하게 만들고 다중 풀 스왑을 가능하게 하기 위해). 이 컨트랙트는 핵심 Uniswap 컨트랙트가 어떻게 확장될 수 있는지 보여주는 좋은 예시였습니다. 그리고 우리는 이 아이디어를 조금 더 발전시킬 것입니다.
 
-We'll need a manager contract that will implement the ERC721 standard and will manage liquidity positions. The contract will have the standard NFT functionality (minting, burning, transferring, balances and ownership tracking, etc.) and will allow to provide and remove liquidity to pools. The contract will need to be the actual owner of liquidity in pools because we don't want to let users add liquidity without minting a token and removing the entire liquidity without burning one. We want every liquidity position to be linked to an NFT token, and we want them to be synchronized.
+우리는 ERC721 표준을 구현하고 유동성 포지션을 관리할 관리자 컨트랙트가 필요합니다. 이 컨트랙트는 표준 NFT 기능 (발행, 소각, 전송, 잔액 및 소유권 추적 등)을 가지며 풀에 유동성을 공급하고 제거할 수 있도록 합니다. 이 컨트랙트는 풀 유동성의 실제 소유자여야 합니다. 왜냐하면 사용자가 토큰을 발행하지 않고 유동성을 추가하거나 토큰을 소각하지 않고 전체 유동성을 제거하는 것을 원치 않기 때문입니다. 우리는 모든 유동성 포지션이 NFT 토큰에 연결되기를 원하며, 그것들이 동기화되기를 원합니다.
 
-Let's see what functions we'll have in the new contract:
-1. since it'll be an NFT contract, it'll have all the ERC721 functions, including `tokenURI`, which returns the URI of the image of an NFT token;
-1. `mint` and `burn` to mint and burn liquidity and NFT tokens at the same time;
-1. `addLiquidity` and `removeLiquidity` to add and remove liquidity in existing positions;
-1. `collect`, to collect tokens after removing liquidity.
+새로운 컨트랙트에 어떤 기능이 있을지 살펴봅시다:
+1. NFT 컨트랙트이므로 NFT 토큰 이미지의 URI를 반환하는 `tokenURI`를 포함한 모든 ERC721 기능이 있습니다.
+1. 유동성과 NFT 토큰을 동시에 발행하고 소각하는 `mint` 및 `burn`;
+1. 기존 포지션에 유동성을 추가 및 제거하는 `addLiquidity` 및 `removeLiquidity`;
+1. 유동성 제거 후 토큰을 수집하는 `collect`.
 
-Alright, let's get to code.
+자, 이제 코딩을 시작해 봅시다.
 
-## The Minimal Contract
+## 최소 컨트랙트
 
-Since we don't want to implement the ERC721 standard from scratch, we're going to use a library. We already have [Solmate](https://github.com/transmissions11/solmate) in the dependencies, so we're going to use [its ERC721 implementation](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol).
+ERC721 표준을 처음부터 구현하고 싶지 않으므로 라이브러리를 사용할 것입니다. 이미 의존성에 [Solmate](https://github.com/transmissions11/solmate)가 있으므로 [Solmate의 ERC721 구현](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol)을 사용할 것입니다.
 
-> Using [the ERC721 implementation from OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/token/ERC721) is also an option, but I prefer the gas-optimized contracts from Solmate.
+> [OpenZeppelin의 ERC721 구현](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/token/ERC721)을 사용하는 것도 선택 사항이지만, 저는 Solmate의 가스 최적화 컨트랙트를 선호합니다.
 
-This will be the bare minimum of the NFT manager contract:
+다음은 NFT 관리자 컨트랙트의 최소한의 모습입니다:
 
 ```solidity
 contract UniswapV3NFTManager is ERC721 {
@@ -41,13 +41,13 @@ contract UniswapV3NFTManager is ERC721 {
 }
 ```
 
-`tokenURI` will return an empty string until we implement a metadata and SVG renderer. We've added the stub so that the Solidity compiler doesn't fail while we're working on the rest of the contract (the `tokenURI` function in the Solmate ERC721 contract is virtual, so we must implement it).
+`tokenURI`는 메타데이터 및 SVG 렌더러를 구현할 때까지 빈 문자열을 반환합니다. Solidity 컴파일러가 컨트랙트의 나머지 부분을 작업하는 동안 실패하지 않도록 스텁을 추가했습니다 (Solmate ERC721 컨트랙트의 `tokenURI` 함수는 가상이므로 구현해야 합니다).
 
-## Minting
+## 발행 (Minting)
 
-Minting, as we discussed earlier, will involve two operations: adding liquidity to a pool and minting an NFT.
+앞서 논의한 바와 같이 발행은 풀에 유동성을 추가하고 NFT를 발행하는 두 가지 작업을 포함합니다.
 
-To keep the links between pool liquidity positions and NFTs, we'll need a mapping and a structure:
+풀 유동성 포지션과 NFT 간의 연결을 유지하려면 매핑과 구조체가 필요합니다:
 
 ```solidity
 struct TokenPosition {
@@ -58,14 +58,14 @@ struct TokenPosition {
 mapping(uint256 => TokenPosition) public positions;
 ```
 
-To find a position we need:
-1. a pool address;
-1. an owner address;
-1. the boundaries of a position (lower and upper ticks).
+포지션을 찾으려면 다음이 필요합니다:
+1. 풀 주소;
+2. 소유자 주소;
+3. 포지션 경계 (하위 및 상위 틱).
 
-Since the NFT manager contract will be the owner of all positions created via it, we don't need to store the position's owner address and we can only store the rest data. The keys in the `positions` mapping are token IDs; the mapping links NFT IDs to the position data that is required to find a liquidity position.
+NFT 관리자 컨트랙트는 이를 통해 생성된 모든 포지션의 소유자가 되므로 포지션의 소유자 주소를 저장할 필요가 없으며 나머지 데이터만 저장할 수 있습니다. `positions` 매핑의 키는 토큰 ID입니다. 이 매핑은 NFT ID를 유동성 포지션을 찾는 데 필요한 포지션 데이터에 연결합니다.
 
-Let's implement minting:
+발행을 구현해 봅시다:
 
 ```solidity
 struct MintParams {
@@ -86,9 +86,9 @@ function mint(MintParams calldata params) public returns (uint256 tokenId) {
 }
 ```
 
-The minting parameters are identical to those of `UniswapV3Manager`, with the addition of `recipient`, which will allow minting NFT to another address.
+발행 파라미터는 `UniswapV3Manager`의 파라미터와 동일하며, NFT를 다른 주소로 발행할 수 있도록 하는 `recipient`가 추가되었습니다.
 
-In the `mint` function, we first add liquidity to a pool:
+`mint` 함수에서 먼저 풀에 유동성을 추가합니다:
 
 ```solidity
 IUniswapV3Pool pool = getPool(params.tokenA, params.tokenB, params.fee);
@@ -106,9 +106,9 @@ IUniswapV3Pool pool = getPool(params.tokenA, params.tokenB, params.fee);
 );
 ```
 
-`_addLiquidity` is identical to the body of the `mint` function in the `UniswapV3Manager` contract: it converts ticks to $\sqrt(P)$, computes liquidity amount, and calls `pool.mint()`.
+`_addLiquidity`는 `UniswapV3Manager` 컨트랙트의 `mint` 함수 본문과 동일합니다. 틱을 $\sqrt(P)$로 변환하고, 유동성 양을 계산하고, `pool.mint()`를 호출합니다.
 
-Next, we mint an NFT:
+다음으로 NFT를 발행합니다:
 
 ```solidity
 tokenId = nextTokenId++;
@@ -116,9 +116,9 @@ _mint(params.recipient, tokenId);
 totalSupply++;
 ```
 
-`tokenId` is set to the current `nextTokenId` and the latter is then incremented. The `_mint` function is provided by the ERC721 contract from Solmate. After minting a new token, we update `totalSupply`.
+`tokenId`는 현재 `nextTokenId`로 설정되고, `nextTokenId`는 증가됩니다. `_mint` 함수는 Solmate의 ERC721 컨트랙트에서 제공됩니다. 새 토큰을 발행한 후 `totalSupply`를 업데이트합니다.
 
-Finally, we need to store the information about the new token and the new position:
+마지막으로 새 토큰과 새 포지션에 대한 정보를 저장해야 합니다:
 
 ```solidity
 TokenPosition memory tokenPosition = TokenPosition({
@@ -130,11 +130,11 @@ TokenPosition memory tokenPosition = TokenPosition({
 positions[tokenId] = tokenPosition;
 ```
 
-This will later help us find liquidity position by token ID.
+이렇게 하면 나중에 토큰 ID로 유동성 포지션을 찾는 데 도움이 됩니다.
 
-## Adding Liquidity
+## 유동성 추가 (Adding Liquidity)
 
-Next, we'll implement a function to add liquidity to an existing position, in the case when we want to add more liquidity in a position that already has some. In such cases, we don't want to mint an NFT, but only to increase the amount of liquidity in an existing position. For that, we'll only need to provide a token ID and token amounts:
+다음으로 기존 포지션에 유동성을 추가하는 함수를 구현합니다. 이미 유동성이 있는 포지션에 더 많은 유동성을 추가하려는 경우입니다. 이러한 경우 NFT를 발행하는 것이 아니라 기존 포지션의 유동성 양만 늘리고 싶습니다. 이를 위해 토큰 ID와 토큰 양만 제공하면 됩니다:
 
 ```solidity
 function addLiquidity(AddLiquidityParams calldata params)
@@ -162,11 +162,11 @@ function addLiquidity(AddLiquidityParams calldata params)
 }
 ```
 
-This function ensures there's an existing token and calls `pool.mint()` with parameters of an existing position.
+이 함수는 기존 토큰이 있는지 확인하고 기존 포지션의 파라미터로 `pool.mint()`를 호출합니다.
 
-## Remove Liquidity
+## 유동성 제거 (Remove Liquidity)
 
-Recall that in the `UniswapV3Manager` contract we didn't implement a `burn` function because we wanted users to be owners of liquidity positions. Now, we want the NFT manager to be the owner. And we can have liquidity burning implemented in it:
+`UniswapV3Manager` 컨트랙트에서는 사용자가 유동성 포지션의 소유자가 되기를 원했기 때문에 `burn` 함수를 구현하지 않았던 것을 상기해 보십시오. 이제 NFT 관리자가 소유자가 되기를 원합니다. 그리고 유동성 소각을 구현할 수 있습니다:
 
 ```solidity
 struct RemoveLiquidityParams {
@@ -197,11 +197,11 @@ function removeLiquidity(RemoveLiquidityParams memory params)
 }
 ```
 
-We're again checking that the provided token ID is valid. And we also need to ensure that a position has enough liquidity to burn.
+여기서도 제공된 토큰 ID가 유효한지 확인합니다. 그리고 포지션에 소각할 충분한 유동성이 있는지 확인해야 합니다.
 
-## Collecting Tokens
+## 토큰 수집 (Collecting Tokens)
 
-The NFT manager contract can also collect tokens after burning liquidity. Notice that collected tokens are sent to `msg.sender` since the contract manages liquidity on behalf of the caller:
+NFT 관리자 컨트랙트는 유동성을 소각한 후 토큰을 수집할 수도 있습니다. 수집된 토큰은 호출자를 대신하여 컨트랙트가 유동성을 관리하므로 `msg.sender`에게 전송됩니다:
 
 ```solidity
 struct CollectParams {
@@ -230,12 +230,12 @@ function collect(CollectParams memory params)
 }
 ```
 
-## Burning
+## 소각 (Burning)
 
-Finally, burning. Unlike the other functions of the contract, this function doesn't do anything with a pool: it only burns an NFT. To burn an NFT, the underlying position must be empty and tokens must be collected. So, if we want to burn an NFT, we need to:
-1. call `removeLiquidity` and remove the entire position liquidity;
-1. call `collect` to collect the tokens after burning the position;
-1. call `burn` to burn the token.
+마지막으로 소각입니다. 컨트랙트의 다른 기능과는 달리 이 함수는 풀과 관련된 작업을 수행하지 않습니다. NFT만 소각합니다. NFT를 소각하려면 기본 포지션이 비어 있어야 하고 토큰이 수집되어야 합니다. 따라서 NFT를 소각하려면 다음을 수행해야 합니다:
+1. `removeLiquidity`를 호출하여 전체 포지션 유동성을 제거합니다.
+2. `collect`를 호출하여 포지션을 소각한 후 토큰을 수집합니다.
+3. `burn`을 호출하여 토큰을 소각합니다.
 
 ```solidity
 function burn(uint256 tokenId) public isApprovedOrOwner(tokenId) {
@@ -255,4 +255,4 @@ function burn(uint256 tokenId) public isApprovedOrOwner(tokenId) {
 }
 ```
 
-That's it!
+이것으로 끝입니다!

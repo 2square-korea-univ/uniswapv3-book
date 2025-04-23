@@ -1,36 +1,36 @@
-# A Little Bit More on Fixed-point Numbers
+## 고정 소수점 숫자에 대한 추가 설명
 
-In this bonus chapter, I'd like to show you how to convert prices to ticks in Solidity. We don't need to do this in the main contracts, but it's helpful to have such function in tests so we don't hardcode ticks and could write something like `tick(5000)`–this makes code easier to read because it's more convenient for us to think in prices, not tick indexes.
+이번 보너스 챕터에서는 Solidity에서 가격을 틱(tick)으로 변환하는 방법을 보여드리고자 합니다. 메인 컨트랙트에서 이 기능을 사용할 필요는 없지만, 테스트에서 틱을 하드코딩하지 않고 `tick(5000)`과 같이 작성할 수 있도록 하는 헬퍼 함수를 갖는 것은 유용합니다. 이는 가격이 아닌 틱 인덱스보다 가격으로 생각하는 것이 우리에게 더 편리하기 때문에 코드를 더 읽기 쉽게 만듭니다.
 
-Recall that, to find ticks, we use the `TickMath.getTickAtSqrtRatio` function, which takes $\sqrt{P}$ as its argument, and the $\sqrt{P}$ is a Q64.96 fixed-point number. In smart contract tests, we need to check $\sqrt{P}$ many times in many different test cases: mostly after mints and swaps. Instead of hard-coding actual values, it might be cleaner to use a helper function like `sqrtP(5000)` that converts prices to $\sqrt{P}$.
+틱을 찾기 위해 $\sqrt{P}$를 인수로 사용하는 `TickMath.getTickAtSqrtRatio` 함수를 사용한다는 것을 기억하십시오. 여기서 $\sqrt{P}$는 Q64.96 고정 소수점 숫자입니다. 스마트 컨트랙트 테스트에서 우리는 민팅 및 스왑 후와 같이 다양한 테스트 케이스에서 $\sqrt{P}$를 여러 번 확인해야 합니다. 실제 값을 하드 코딩하는 대신 가격을 $\sqrt{P}$로 변환하는 `sqrtP(5000)`과 같은 헬퍼 함수를 사용하는 것이 더 깔끔할 수 있습니다.
 
-So, what's the problem?
+그렇다면 문제는 무엇일까요?
 
-The problem is that Solidity doesn't natively support the square root operation, which means we need a third-party library. Another problem is that prices are often relatively small numbers, like 10, 5000, 0.01, etc., and we don't want to lose precision when taking square root.
+문제는 Solidity가 기본적으로 제곱근 연산을 지원하지 않기 때문에 타사 라이브러리가 필요하다는 것입니다. 또 다른 문제는 가격이 종종 10, 5000, 0.01 등과 같이 비교적 작은 숫자이며 제곱근을 구할 때 정밀도를 잃고 싶지 않다는 것입니다.
 
-You probably remember that we used `PRBMath` earlier in the book to implement a multiply-then-divide operation that doesn't overflow during multiplication. If you check the `PRBMath.sol` contract, you'll notice the `sqrt` function. However, the function doesn't support fixed-point numbers, as the function description says. You can give it a try and see that `PRBMath.sqrt(5000)` results in `70`, which is an integer number with lost precision (without the fractional part).
+책 앞부분에서 곱셈 중 오버플로를 방지하는 곱셈 후 나눗셈 연산을 구현하기 위해 `PRBMath`를 사용했던 것을 기억하실 것입니다. `PRBMath.sol` 컨트랙트를 확인해 보면 `sqrt` 함수가 있습니다. 그러나 함수 설명에서 알 수 있듯이 이 함수는 고정 소수점 숫자를 지원하지 않습니다. 직접 시도해 보면 `PRBMath.sqrt(5000)`은 정밀도가 손실된 정수(소수 부분 없음)인 `70`을 반환합니다.
 
-If you check [prb-math](https://github.com/paulrberg/prb-math) repo, you'll see these contracts: `PRBMathSD59x18.sol` and `PRBMathUD60x18.sol`. Aha! These are fixed-point number implementations. Let's pick the latter and see how it goes: `PRBMathUD60x18.sqrt(5000 * PRBMathUD60x18.SCALE)` returns `70710678118654752440`. This looks interesting!  `PRBMathUD60x18` is a library that implements fixed numbers with 18 decimal places in the fractional part. So the number we got is 70.710678118654752440 (use `cast --from-wei 70710678118654752440`).
+[prb-math](https://github.com/paulrberg/prb-math) 레포지토리를 확인하면 `PRBMathSD59x18.sol` 및 `PRBMathUD60x18.sol` 컨트랙트가 있습니다. 아하! 이것들은 고정 소수점 숫자 구현입니다. 후자를 선택하여 어떻게 진행되는지 봅시다. `PRBMathUD60x18.sqrt(5000 * PRBMathUD60x18.SCALE)`는 `70710678118654752440`을 반환합니다. 흥미롭군요! `PRBMathUD60x18`은 소수 부분에 18자리의 소수점을 갖는 고정 숫자를 구현하는 라이브러리입니다. 따라서 우리가 얻은 숫자는 70.710678118654752440입니다 (`cast --from-wei 70710678118654752440` 사용).
 
-However, we cannot use this number!
+하지만 이 숫자를 사용할 수 없습니다!
 
-There are fixed-point numbers and fixed-point numbers. The Q64.96 fixed-point number used by Uniswap V3 is a **binary** number–64 and 96 signify *binary places*. But `PRBMathUD60x18` implements a *decimal* fixed-point number (UD in the contract name means "unsigned, decimal"), where 60 and 18 signify *decimal places*. This difference is quite significant.
+고정 소수점 숫자에도 종류가 있습니다. Uniswap V3에서 사용하는 Q64.96 고정 소수점 숫자는 **이진** 숫자입니다. 여기서 64와 96은 *이진 자릿수*를 나타냅니다. 그러나 `PRBMathUD60x18`은 *십진* 고정 소수점 숫자를 구현합니다 (컨트랙트 이름의 UD는 "unsigned, decimal"을 의미). 여기서 60과 18은 *십진 자릿수*를 나타냅니다. 이 차이는 상당히 중요합니다.
 
-Let's see how to convert an arbitrary number (42) to either of the above fixed-point numbers:
-1. Q64.96: $42 * 2^{96}$ or, using bitwise left shift, `2 << 96`. The result is 3327582825599102178928845914112.
-1. UD60.18: $42 * 10^{18}$. The result is 42000000000000000000.
+임의의 숫자 (42)를 위에서 언급한 고정 소수점 숫자 중 하나로 변환하는 방법을 살펴봅시다.
+1. Q64.96: $42 * 2^{96}$ 또는 비트 연산 왼쪽 시프트, `2 << 96` 사용. 결과는 3327582825599102178928845914112입니다.
+2. UD60.18: $42 * 10^{18}$. 결과는 42000000000000000000입니다.
 
-Let's now see how to convert numbers with the fractional part (42.1337):
-1. Q64.96: $421337 * 2^{92}$ or `421337 << 92`. The result is 2086359769329537075540689212669952.
-1. UD60.18: $421337 * 10^{14}$. The result is 42133700000000000000.
+이제 소수 부분을 가진 숫자 (42.1337)를 변환하는 방법을 봅시다.
+1. Q64.96: $421337 * 2^{92}$ 또는 `421337 << 92`. 결과는 2086359769329537075540689212669952입니다.
+2. UD60.18: $421337 * 10^{14}$. 결과는 42133700000000000000입니다.
 
-The second variant makes more sense to us because it uses the decimal system, which we learned in our childhood. The first variant uses the binary system and it's much harder for us to read.
+두 번째 변형은 우리가 어린 시절에 배웠던 십진법을 사용하기 때문에 우리에게 더 의미가 있습니다. 첫 번째 변형은 이진법을 사용하며 우리가 읽기가 훨씬 더 어렵습니다.
 
-But the biggest problem with different variants is that it's hard to convert between them.
+그러나 서로 다른 변형의 가장 큰 문제는 변환하기 어렵다는 것입니다.
 
-This all means that we need a different library, one that implements a binary fixed-point number and a `sqrt` function for it. Luckily, there's such a library: [abdk-libraries-solidity](https://github.com/abdk-consulting/abdk-libraries-solidity).  The library implemented Q64.64, not exactly what we need (not 96 bits in the fractional part) but this is not a problem.
+이 모든 것은 이진 고정 소수점 숫자와 그에 대한 `sqrt` 함수를 구현하는 다른 라이브러리가 필요하다는 것을 의미합니다. 다행히도 [abdk-libraries-solidity](https://github.com/abdk-consulting/abdk-libraries-solidity)라는 라이브러리가 있습니다. 이 라이브러리는 정확히 우리가 필요한 것 (소수 부분에 96비트가 아님)은 아니지만 Q64.64를 구현했지만 이것은 문제가 되지 않습니다.
 
-Here's how we can implement the price-to-tick function using the new library:
+새로운 라이브러리를 사용하여 가격-틱 함수를 구현하는 방법은 다음과 같습니다.
 ```solidity
 function tick(uint256 price) internal pure returns (int24 tick_) {
     tick_ = TickMath.getTickAtSqrtRatio(
@@ -44,4 +44,54 @@ function tick(uint256 price) internal pure returns (int24 tick_) {
 }
 ```
 
-`ABDKMath64x64.sqrt` takes Q64.64 numbers so we need to convert `price` to such number. The price is expected to not have the fractional part, so we're shifting it by 64 bits. The `sqrt` function also returns a Q64.64 number but `TickMath.getTickAtSqrtRatio` takes a Q64.96 number–this is why we need to shift the result of the square root operation by `96 - 64` bits to the left.
+`ABDKMath64x64.sqrt`는 Q64.64 숫자를 사용하므로 `price`를 이러한 숫자로 변환해야 합니다. 가격은 소수 부분이 없을 것으로 예상되므로 64비트만큼 시프트합니다. `sqrt` 함수는 Q64.64 숫자를 반환하지만 `TickMath.getTickAtSqrtRatio`는 Q64.96 숫자를 사용합니다. 이것이 제곱근 연산 결과를 `96 - 64`비트만큼 왼쪽으로 시프트해야 하는 이유입니다.
+
+---
+
+## 고정 소수점 숫자에 대한 추가 설명
+
+이번 보너스 챕터에서는 Solidity에서 가격을 틱(tick)으로 변환하는 방법을 설명하고자 합니다. 메인 컨트랙트에서 이 기능을 사용할 필요는 없지만, 테스트 시에 틱 값을 직접 하드코딩하는 대신 `tick(5000)`과 같이 작성할 수 있도록 헬퍼 함수를 마련하는 것은 유용합니다. 이는 틱 인덱스보다는 가격으로 사고하는 것이 우리에게 더 익숙하므로, 코드를 더욱 가독성 있게 만들어줍니다.
+
+틱을 구하기 위해 $\sqrt{P}$를 인수로 사용하는 `TickMath.getTickAtSqrtRatio` 함수를 활용한다는 점을 상기하십시오. 여기서 $\sqrt{P}$는 Q64.96 고정 소수점 숫자 형식입니다. 스마트 컨트랙트 테스트 과정에서, 민팅 및 스왑 후와 같은 다양한 테스트 케이스에서 $\sqrt{P}$ 값을 여러 번 검증해야 할 수 있습니다. 실제 값을 직접 하드코딩하는 것보다 가격을 $\sqrt{P}$로 변환하는 `sqrtP(5000)`과 같은 헬퍼 함수를 사용하는 것이 더 깔끔한 접근 방식일 수 있습니다.
+
+그렇다면 여기서 제기되는 문제는 무엇일까요?
+
+문제는 Solidity가 기본적으로 제곱근 연산을 지원하지 않아 외부 라이브러리에 의존해야 한다는 점입니다. 또 다른 문제는 가격이 종종 10, 5000, 0.01 등과 같이 비교적 작은 숫자로 표현되며, 제곱근 연산 시 정밀도 손실을 최소화하고 싶다는 것입니다.
+
+이 책의 앞부분에서 곱셈 과정 중 오버플로를 방지하기 위해 곱셈 후 나눗셈 연산을 구현하는 데 `PRBMath` 라이브러리를 사용했던 것을 기억하실 것입니다. `PRBMath.sol` 컨트랙트 코드를 살펴보면 `sqrt` 함수가 존재합니다. 하지만 함수 설명에서 알 수 있듯이, 이 함수는 고정 소수점 숫자를 지원하지 않습니다. 실제로 `PRBMath.sqrt(5000)`을 실행해보면 정밀도가 손실된 정수(소수 부분 없음), 즉 `70`을 반환하는 것을 확인할 수 있습니다.
+
+[prb-math](https://github.com/paulrberg/prb-math) 레포지토리를 살펴보면 `PRBMathSD59x18.sol` 및 `PRBMathUD60x18.sol` 컨트랙트가 존재하는 것을 알 수 있습니다. 바로 이것들이 고정 소수점 숫자 구현체입니다. 후자인 `PRBMathUD60x18.sol`을 선택하여 어떻게 활용할 수 있는지 살펴봅시다. `PRBMathUD60x18.sqrt(5000 * PRBMathUD60x18.SCALE)`는 `70710678118654752440`을 반환합니다. 흥미롭습니다! `PRBMathUD60x18`은 소수점 이하 18자리의 십진 소수부를 갖는 고정 소수점 숫자를 구현하는 라이브러리입니다. 따라서 우리가 얻은 숫자는 70.710678118654752440에 해당합니다 (`cast --from-wei 70710678118654752440` 명령어 사용).
+
+하지만 이 숫자는 우리가 원하는 형태가 아닙니다!
+
+고정 소수점 숫자에도 여러 종류가 존재합니다. Uniswap V3에서 사용하는 Q64.96 고정 소수점 숫자 형식은 **이진** 형식입니다. 여기서 64와 96은 *이진 자릿수*를 의미합니다. 반면 `PRBMathUD60x18`은 *십진* 고정 소수점 숫자 형식을 구현합니다 (컨트랙트 이름의 UD는 "unsigned, decimal"을 나타냅니다). 여기서 60과 18은 *십진 자릿수*를 의미합니다. 이러한 차이는 매우 중요합니다.
+
+임의의 숫자 (예: 42)를 앞서 언급한 고정 소수점 숫자 형식 중 하나로 변환하는 방법을 예시를 통해 살펴보겠습니다.
+1. Q64.96: $42 * 2^{96}$ 또는 비트 연산 왼쪽 시프트(`2 << 96`) 사용. 결과는 3327582825599102178928845914112입니다.
+2. UD60.18: $42 * 10^{18}$. 결과는 42000000000000000000입니다.
+
+이제 소수 부분을 포함하는 숫자 (예: 42.1337)를 변환하는 방법을 알아봅시다.
+1. Q64.96: $421337 * 2^{92}$ 또는 `421337 << 92`. 결과는 2086359769329537075540689212669952입니다.
+2. UD60.18: $421337 * 10^{14}$. 결과는 42133700000000000000입니다.
+
+두 번째 변환 방식은 우리가 어릴 적부터 익숙하게 사용해 온 십진법을 기반으로 하므로 직관적으로 이해하기 쉽습니다. 반면 첫 번째 변환 방식은 이진법을 사용하므로 사람이 직접 읽고 이해하기에는 훨씬 더 어렵습니다.
+
+그러나 이 두 가지 변환 방식의 가장 큰 문제점은 서로 다른 형식 간의 변환이 복잡하다는 점입니다.
+
+결론적으로, 이진 고정 소수점 숫자 형식을 지원하고, 특히 해당 형식에 대한 `sqrt` 함수를 제공하는 별도의 라이브러리가 필요하다는 것을 알 수 있습니다. 다행히도 [abdk-libraries-solidity](https://github.com/abdk-consulting/abdk-libraries-solidity)라는 라이브러리가 존재합니다. 이 라이브러리는 정확히 우리가 필요로 하는 Q64.96 형식을 제공하지는 않지만 (소수부에 96비트가 아닌), Q64.64 형식을 구현하고 있으며, 이는 큰 문제가 되지 않습니다.
+
+새로운 라이브러리를 활용하여 가격-틱 변환 함수를 구현하는 방법은 다음과 같습니다.
+```solidity
+function tick(uint256 price) internal pure returns (int24 tick_) {
+    tick_ = TickMath.getTickAtSqrtRatio(
+        uint160(
+            int160(
+                ABDKMath64x64.sqrt(int128(int256(price << 64))) <<
+                    (FixedPoint96.RESOLUTION - 64)
+            )
+        )
+    );
+}
+```
+
+`ABDKMath64x64.sqrt` 함수는 Q64.64 숫자 형식을 입력으로 받으므로, `price` 값을 해당 형식으로 변환해야 합니다. 가격은 일반적으로 소수 부분을 가지지 않을 것으로 예상되므로, 64비트만큼 왼쪽 시프트 연산을 수행합니다. `sqrt` 함수는 Q64.64 숫자 형식을 반환하지만, `TickMath.getTickAtSqrtRatio` 함수는 Q64.96 숫자 형식을 입력으로 받습니다. 따라서 제곱근 연산 결과 값을 `96 - 64` 비트만큼 왼쪽으로 시프트하여 Q64.96 형식으로 맞춰주는 것입니다.
